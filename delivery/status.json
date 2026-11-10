@@ -214,7 +214,7 @@
         "services/api/tests/test_at24_evidence.py",
         "console case page evidence viewer"
       ],
-      "gap": "Local sealed store for dev/CI only; production needs a private KMS-encrypted bucket (M02-T04). Dummy provider supplies synthetic SVG placeholders, no real images. Retention 30 days is a proposal."
+      "gap": "S3 adapter (SSE-KMS + app-level seal) tested with a stub client only; no real bucket exists. Dummy provider supplies synthetic SVG placeholders. Retention 30 days is a proposal."
     },
     "M07-T02": {
       "status": "in_progress",

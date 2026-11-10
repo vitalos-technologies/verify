@@ -161,7 +161,7 @@ class AppState:
     providers: dict[str, ProviderAdapter]
     messenger: ap.DummyMessenger | None
     resolver: webhooks.Resolver
-    store: evidence.LocalSealedStore
+    store: evidence.LocalSealedStore | evidence.S3SealedStore
 
 
 def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver | None = None,
@@ -178,7 +178,7 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
     state = AppState(settings, db, CoverageRegistry.load(settings.coverage_path), providers,
                      ap.DummyMessenger() if settings.is_non_production else None,
                      resolver or webhooks.default_resolver,
-                     evidence.LocalSealedStore(settings.evidence_dir, settings.data_key))
+                     evidence.make_store(settings))
     app = FastAPI(title="Vitalos Verify API (prototype)", version="0.1.0", docs_url=None, redoc_url=None,
                   openapi_url="/openapi.json" if settings.is_non_production else None)
     app.state.vv = state

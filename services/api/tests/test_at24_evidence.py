@@ -147,3 +147,47 @@ def test_subject_deletion_removes_objects(client, worker, make_tenant, settings,
     drain(worker, 2)
     assert not any(client.app.state.vv.store.exists(k) for k in keys)
     assert "SYNTHETIC" not in "\n".join(r.getMessage() for r in caplog.records)
+
+
+class _StubS3:
+    def __init__(self):
+        self.objects: dict[str, dict] = {}
+
+    def put_object(self, **kw):
+        self.objects[kw["Key"]] = kw
+
+    def get_object(self, Bucket, Key):  # noqa: N803
+        return {"Body": io.BytesIO(self.objects[Key]["Body"])}
+
+    def delete_object(self, Bucket, Key):  # noqa: N803
+        self.objects.pop(Key, None)
+
+    def head_object(self, Bucket, Key):  # noqa: N803
+        if Key not in self.objects:
+            err = Exception("404")
+            err.response = {"Error": {"Code": "404"}}
+            raise err
+
+
+def test_s3_store_seals_and_requests_kms():
+    from vv.evidence import S3SealedStore
+    s3 = _StubS3()
+    store = S3SealedStore("bucket", "kms-key", b"k" * 32, client=s3)
+    store.put("t/s/e", b"SYNTHETIC", b"t|e")
+    obj = s3.objects["t/s/e"]
+    assert obj["ServerSideEncryption"] == "aws:kms" and obj["SSEKMSKeyId"] == "kms-key"
+    assert b"SYNTHETIC" not in obj["Body"]
+    assert store.get("t/s/e", b"t|e") == b"SYNTHETIC" and store.exists("t/s/e")
+    store.delete("t/s/e")
+    assert not store.exists("t/s/e")
+
+
+def test_production_requires_bucket(settings, monkeypatch):
+    from dataclasses import replace
+
+    import pytest
+
+    from vv.evidence import make_store
+    monkeypatch.delenv("VV_EVIDENCE_BUCKET", raising=False)
+    with pytest.raises(RuntimeError):
+        make_store(replace(settings, environment="production"))

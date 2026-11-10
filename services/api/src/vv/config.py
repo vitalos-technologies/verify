@@ -62,9 +62,7 @@ def _evidence_dir(environment: str) -> Path:
     raw = _env("VV_EVIDENCE_DIR")
     if raw:
         return Path(raw)
-    if environment in _NON_PROD:
-        return SERVICE_ROOT / ".evidence-local"
-    raise RuntimeError("VV_EVIDENCE_DIR (or the private object store) must be configured outside development")
+    return SERVICE_ROOT / ".evidence-local"  # production uses VV_EVIDENCE_BUCKET (evidence.make_store)
 
 
 def load_settings() -> Settings:

@@ -80,7 +80,9 @@ def test_contact_verify_after_decision_still_writes_check(client, worker, make_t
     assert client.post("/applicant/contact/verify", json={"code": "123456"}).status_code == 409
 
 
-def test_staging_refuses_mocks(settings):
+def test_staging_refuses_mocks(settings, monkeypatch):
+    monkeypatch.setenv("VV_EVIDENCE_BUCKET", "vv-staging-evidence-test")
+    monkeypatch.setenv("VV_EVIDENCE_KMS_KEY_ID", "alias/test")
     st = replace(settings, environment="staging")
     with pytest.raises(RuntimeError):
         DummyProvider(None, b"x" * 32, "staging")

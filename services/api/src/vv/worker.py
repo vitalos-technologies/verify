@@ -25,7 +25,7 @@ class Worker:
         self.providers: dict[str, ProviderAdapter] = {}
         if settings.is_non_production:
             self.providers["dummy"] = DummyProvider(self.db, settings.dummy_provider_secret, settings.environment)
-        self.store = evidence.LocalSealedStore(settings.evidence_dir, settings.data_key)
+        self.store = evidence.make_store(settings)
         self.resolver = resolver
         self.transport = transport
 

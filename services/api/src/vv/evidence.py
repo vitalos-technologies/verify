@@ -56,6 +56,48 @@ class LocalSealedStore:
         return self._path(storage_key).exists()
 
 
+class S3SealedStore:
+    """Production store: private bucket with SSE-KMS (infra/terraform/modules/evidence_storage) plus the same
+    application-level AES-GCM seal, so a bucket-policy mistake alone never exposes plaintext."""
+
+    def __init__(self, bucket: str, kms_key_id: str, key: bytes, client=None) -> None:
+        if client is None:
+            import boto3
+            client = boto3.client("s3", region_name="eu-west-2")
+        self.bucket, self.kms_key_id, self.key, self.s3 = bucket, kms_key_id, key, client
+
+    def put(self, storage_key: str, data: bytes, aad: bytes) -> None:
+        self.s3.put_object(Bucket=self.bucket, Key=storage_key, Body=crypto.seal(self.key, data, aad),
+                           ServerSideEncryption="aws:kms", SSEKMSKeyId=self.kms_key_id,
+                           ContentType="application/octet-stream")
+
+    def get(self, storage_key: str, aad: bytes) -> bytes:
+        return crypto.unseal(self.key, self.s3.get_object(Bucket=self.bucket, Key=storage_key)["Body"].read(), aad)
+
+    def delete(self, storage_key: str) -> None:
+        self.s3.delete_object(Bucket=self.bucket, Key=storage_key)
+
+    def exists(self, storage_key: str) -> bool:
+        try:
+            self.s3.head_object(Bucket=self.bucket, Key=storage_key)
+            return True
+        except Exception as exc:  # botocore ClientError 404
+            if getattr(exc, "response", {}).get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
+                return False
+            raise
+
+
+def make_store(settings):
+    """S3 when VV_EVIDENCE_BUCKET is set, otherwise the local development store."""
+    import os
+    bucket = os.environ.get("VV_EVIDENCE_BUCKET")
+    if bucket:
+        return S3SealedStore(bucket, os.environ["VV_EVIDENCE_KMS_KEY_ID"], settings.data_key)
+    if not settings.is_non_production:
+        raise RuntimeError("VV_EVIDENCE_BUCKET is required outside development/test/ci")
+    return LocalSealedStore(settings.evidence_dir, settings.data_key)
+
+
 def _aad(tenant_id: str, evidence_id: str) -> bytes:
     return f"{tenant_id}|{evidence_id}".encode()
 
