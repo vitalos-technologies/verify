@@ -62,7 +62,12 @@ def seed_dev(dsn: str) -> dict:
         service.publish_policy(conn, tid, DEV_POLICY["id"], 1, coverage, settings.session_price_minor)
         _, raw = auth.create_api_key(conn, settings.hmac_pepper, settings.environment, tid,
                                      sorted(auth.API_SCOPES), "dev seed", "vv-admin")
+    with owner_conn(dsn) as conn:
+        conn.execute("INSERT INTO platform_operators (id, subject, display_name, role) VALUES "
+                     "('pop_dev_admin', 'platform-admin@synthetic.example', 'Platform Admin', 'platform_admin'), "
+                     "('pop_dev_ops', 'ops@synthetic.example', 'Operations', 'operations') ON CONFLICT DO NOTHING")
     return {"tenant_id": tid, "owner_subject": "owner@synthetic.example", "api_key": raw,
+            "platform_admin_subject": "platform-admin@synthetic.example",
             "note": "Synthetic development tenant. The API key is shown once."}
 
 

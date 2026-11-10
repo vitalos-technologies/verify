@@ -36,6 +36,7 @@ const nextConfig = {
     const rules = [
       { source: "/applicant/:path*", destination: `${apiOrigin}/applicant/:path*` },
       { source: "/console/:path*", destination: `${apiOrigin}/console/:path*` },
+      { source: "/platform/:path*", destination: `${apiOrigin}/platform/:path*` },
     ];
     if (devRoutes) rules.push({ source: "/dummy-provider/:path*", destination: `${apiOrigin}/dummy-provider/:path*` });
     return rules;

@@ -48,11 +48,13 @@ async function signIn(page: Page) {
 test("reviewer claims and decides a case; evidence stays unchanged", async ({ page }) => {
   const sid = await reviewCase(`case-${Date.now()}`);
   await signIn(page);
-  await page.getByRole("button", { name: "Needs review" }).click();
-  await expect(page.getByRole("link").filter({ hasText: /^case-/ }).first()).toBeVisible({ timeout: 15000 });
+  await page.getByRole("tab", { name: "Needs review" }).click();
+  await expect(page.getByRole("button").filter({ hasText: /^case-/ }).first()).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button").filter({ hasText: /^case-/ }).first().click();
+  await expect(page.getByRole("complementary", { name: /^case-/ })).toBeVisible();
   await axe(page, "list");
-  await page.getByRole("link", { name: "Reviews" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Reviews" })).toBeVisible();
+  await page.getByRole("link", { name: /Review queue/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Review queue" })).toBeVisible();
   await axe(page, "reviews");
   await page.goto(`/app/cases/${sid}`);
   await expect(page.getByRole("button", { name: "Claim" })).toBeVisible();
@@ -62,8 +64,8 @@ test("reviewer claims and decides a case; evidence stays unchanged", async ({ pa
   await page.getByLabel("Decline").check();
   await page.getByLabel("Reason", { exact: true }).fill("Liveness could not be confirmed");
   await page.getByRole("button", { name: "Record decision" }).click();
-  await expect(page.locator(".meta .chip").first()).toHaveText("Declined");
-  await expect(page.locator(".rows li", { hasText: "Liveness" }).locator(".chip")).toHaveText("inconclusive");
+  await expect(page.locator(".titlerow .pill")).toHaveText("Not verified");
+  await expect(page.locator(".list .row", { hasText: "Liveness" }).locator(".pill")).toHaveText("Review needed");
   const v = await (await fetch(`${API}/v1/verifications/${sid}`, { headers: { Authorization: `Bearer ${seed().api_key}` } })).json();
   expect(v.state).toBe("declined");
   expect(v.decision.method).toBe("evidence_review");
@@ -76,7 +78,11 @@ test("console screenshots", async ({ page }) => {
   const sid = await reviewCase(`shot-${Date.now()}`);
   await signIn(page);
   await page.screenshot({ path: join(out!, "10-console-list.png") });
-  await page.getByRole("link", { name: "Reviews" }).click();
+  await page.getByRole("tab", { name: "Needs review" }).click();
+  await page.getByRole("button").filter({ hasText: /^shot-/ }).first().click();
+  await expect(page.getByRole("complementary", { name: /^shot-/ })).toBeVisible();
+  await page.screenshot({ path: join(out!, "13-console-detail.png") });
+  await page.getByRole("link", { name: /Review queue/ }).click();
   await expect(page.getByRole("button", { name: "Claim" }).first()).toBeVisible();
   await page.screenshot({ path: join(out!, "11-console-reviews.png") });
   await page.goto(`/app/cases/${sid}`);
@@ -86,4 +92,20 @@ test("console screenshots", async ({ page }) => {
   await page.getByRole("button", { name: "View" }).first().click();
   await expect(page.getByRole("img", { name: "Document" })).toBeVisible();
   await page.screenshot({ path: join(out!, "12-console-case.png"), fullPage: true });
+  // Platform consoles (seeded operator).
+  await page.goto("/platform-login");
+  await page.getByLabel("Operator").fill(seed().platform_admin_subject);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Operations" })).toBeVisible();
+  await expect(page.getByText("Identity checks")).toBeVisible();
+  await axe(page, "ops");
+  await page.screenshot({ path: join(out!, "14-ops.png"), fullPage: true });
+  await page.getByRole("link", { name: "Organisations" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Organisations" })).toBeVisible();
+  await expect(page.getByRole("complementary")).toBeVisible();
+  await axe(page, "admin");
+  await page.screenshot({ path: join(out!, "15-admin.png"), fullPage: true });
+  await page.goto("/");
+  await axe(page, "home");
+  await page.screenshot({ path: join(out!, "16-home.png") });
 });

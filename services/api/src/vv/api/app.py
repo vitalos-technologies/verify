@@ -18,7 +18,7 @@ from fastapi.responses import Response as RawResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, billing, deletion, events, evidence, oidc, review, service, webhooks
+from vv import auth, billing, deletion, events, evidence, oidc, platform, review, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -620,6 +620,64 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         return RawResponse(body, media_type="text/csv", headers={
             "Content-Disposition": f'attachment; filename="verifications-{period}.csv"'})
 
+    @app.post("/console/verifications")
+    def console_create(request: Request, principal: Console, body: CreateSession,
+                       idem: IdemKey = None):
+        principal.require("sessions:create")
+        payload = body.model_dump()
+        with db.tenant_tx(principal.tenant_id) as conn:
+            status, out = service.run_idempotent(
+                conn, settings.data_key, principal.tenant_id, "createVerification", idem, payload,
+                lambda c: service.create_session(
+                    c, tenant_id=principal.tenant_id, actor_id=principal.actor_id, body=payload,
+                    coverage=state.coverage, environment=settings.environment,
+                    hosted_base_url=settings.hosted_base_url, hosted_ttl=settings.hosted_token_ttl_seconds,
+                    price_minor=settings.session_price_minor, request_id=request.state.request_id))
+        return respond(status, out)
+
+    @app.get("/console/stats")
+    def console_stats(principal: Console):
+        principal.require("sessions:read")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            rows = {r["state"]: r["n"] for r in conn.execute(
+                "SELECT state, count(*) AS n FROM sessions WHERE tenant_id = %s GROUP BY state",
+                (principal.tenant_id,))}
+            queue = conn.execute("SELECT count(*) AS n FROM reviews WHERE tenant_id = %s AND status <> 'closed'",
+                                 (principal.tenant_id,)).fetchone()["n"]
+        return {"total": sum(rows.values()), "verified": rows.get("approved", 0),
+                "needs_review": rows.get("review_required", 0),
+                "in_progress": sum(rows.get(k, 0) for k in ("created", "in_progress", "processing", "action_required")),
+                "declined": rows.get("declined", 0), "review_queue": queue}
+
+    # Platform administration / operations (metadata only).
+    def platform_principal(request: Request) -> dict:
+        return platform.authenticate(db, request.cookies.get("vv_platform"))
+
+    @app.get("/platform/me")
+    def platform_me(request: Request):
+        op = platform_principal(request)
+        return {"display_name": op["display_name"], "role": op["role"]}
+
+    @app.get("/platform/organisations")
+    def platform_orgs(request: Request):
+        platform.require(platform_principal(request), {"platform_admin"})
+        with db.system_tx() as conn:
+            return platform.organisations(conn, state.coverage)
+
+    @app.get("/platform/organisations/{tenant_id}/activity")
+    def platform_org_activity(request: Request, tenant_id: str):
+        platform.require(platform_principal(request), {"platform_admin"})
+        with db.system_tx() as conn:
+            return platform.activity(conn, tenant_id)
+
+    @app.get("/platform/operations")
+    def platform_ops(request: Request):
+        platform.require(platform_principal(request), {"platform_admin", "operations"})
+        with db.system_tx() as conn:
+            out = platform.operations(conn, sorted(state.providers))
+        out["environment"] = settings.environment
+        return out
+
     @app.get("/console/me")
     def console_me(principal: Console):
         with db.tenant_tx(principal.tenant_id) as conn:
@@ -686,6 +744,18 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             def dev_last_code():
                 """DEV/E2E ONLY (VV_DEV_EXPOSE_CODES=1, non-production): read the dummy messenger's last code."""
                 return {"code": state.messenger.last_sent}
+
+        @app.post("/platform/dev-login")
+        def platform_dev_login(body: DevLogin, response: Response):
+            """DEV ONLY: platform operator sign-in (tenant_id is ignored; user_subject identifies the operator)."""
+            with db.system_tx() as conn:
+                op = conn.execute("SELECT id FROM platform_operators WHERE subject = %s AND active",
+                                  (body.user_subject,)).fetchone()
+                if op is None:
+                    raise ApiError(401, "unauthenticated", "Valid credentials are required.")
+                token, csrf = platform.create_session(conn, op["id"])
+            set_cookie(response, "vv_platform", token, "/platform", 8 * 3600)
+            return {"csrf_token": csrf}
 
         @app.post("/dummy-provider/capture")
         def dummy_capture(body: DummyCapture):

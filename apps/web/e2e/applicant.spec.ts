@@ -75,7 +75,7 @@ test("keyboard-only journey completes; token removed from URL; accessible at eac
   await press(page.getByRole("button", { name: "Continue" }));
 
   await throughEmail(page);
-  await heading(page, /document and selfie/i);
+  await heading(page, /check it.s you/i);
   await axe(page, "capture");
   await noHorizontalScroll(page);
   await press(page.getByRole("button", { name: "Use camera" }));
@@ -121,7 +121,7 @@ test("camera denied: alternative and handoff offered, no adverse outcome, same s
     const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const phone = await phoneCtx.newPage();
     await phone.goto(link);
-    await heading(phone, /document and selfie/i); // notice + email already done on the first device
+    await heading(phone, /check it.s you/i); // notice + email already done on the first device
     await press(phone.getByRole("button", { name: "Use camera" }));
     await press(phone.getByRole("button", { name: "Submit" }));
     await heading(phone, /^done$/i);

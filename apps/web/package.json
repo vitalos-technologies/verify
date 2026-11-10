@@ -11,6 +11,7 @@
     "build:e2e": "VV_API_ORIGIN=http://localhost:8100 VV_ENABLE_DUMMY_PROVIDER=1 next build"
   },
   "dependencies": {
+    "lucide-react": "^1.61.0",
     "next": "16.4.3",
     "qrcode": "1.5.4",
     "react": "19.3.1",

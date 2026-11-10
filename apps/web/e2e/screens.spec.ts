@@ -32,7 +32,7 @@ test("capture applicant journey", async ({ page }) => {
   const { code } = await (await fetch(`${API}/dev/last-contact-code`)).json();
   await page.getByLabel(/6-digit code/).fill(code);
   await page.getByRole("button", { name: "Confirm" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/document and selfie/i);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/check it.s you/i);
   await page.getByRole("button", { name: "Use my phone" }).click();
   await expect(page.getByRole("img", { name: /QR code/ })).toBeVisible();
   await shot("04-capture-handoff-qr");
