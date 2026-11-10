@@ -17,7 +17,8 @@ API_SCOPES = frozenset({"sessions:create", "sessions:read", "decisions:write", "
                         "deletions:read", "webhooks:manage"})
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
-    "owner": frozenset({"memberships:manage", "policies:manage", "api_keys:manage", "webhooks:manage",
+    "owner": frozenset({"legal_holds:manage",
+                        "memberships:manage", "policies:manage", "api_keys:manage", "webhooks:manage",
                         "sessions:read", "sessions:create", "decisions:write", "audit:read"}),
     "administrator": frozenset({"policies:manage", "sessions:read", "sessions:create", "decisions:write"}),
     "reviewer": frozenset({"sessions:read", "decisions:write"}),

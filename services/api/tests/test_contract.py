@@ -11,8 +11,9 @@ from vv.config import SERVICE_ROOT
 
 OPENAPI = json.loads((SERVICE_ROOT.parent.parent / "docs/spec/contracts/openapi.json").read_text())
 IMPLEMENTED = {"createVerification", "listVerifications", "getVerification", "recordReviewDecision",
+               "requestDeletion", "getDeletion",
                "createWebhookEndpoint", "replayWebhook"}
-NOT_YET = {"requestDeletion": "M05-T02", "getDeletion": "M05-T02"}
+NOT_YET: dict[str, str] = {}
 
 
 def check(instance, name):
@@ -26,10 +27,15 @@ def test_operation_inventory_is_explicit():
 
 
 def test_routes_exist_for_implemented_operations(app):
-    paths = {(m, r.path) for r in app.routes for m in getattr(r, "methods", [])}
+    import re
+
+    def norm(p: str) -> str:
+        return re.sub(r"\{[^}]+\}", "{}", p)
+
+    paths = {(m, norm(r.path)) for r in app.routes for m in getattr(r, "methods", [])}
     for path, ops in OPENAPI["paths"].items():
         for method, op in ops.items():
-            present = (method.upper(), path.replace("{id}", "{session_id}")) in paths
+            present = (method.upper(), norm(path)) in paths
             assert present == (op["operationId"] in IMPLEMENTED), op["operationId"]
 
 

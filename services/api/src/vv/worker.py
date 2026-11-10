@@ -9,7 +9,7 @@ from __future__ import annotations
 import signal
 import time
 
-from vv import events, webhooks
+from vv import deletion, events, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.log import log
@@ -32,6 +32,7 @@ class Worker:
         return {
             "provider_events": events.process_due_events(self.db, self.providers),
             "expired": events.expire_sessions(self.db),
+            "deletions": deletion.advance_deletions(self.db, self.providers),
             "dispatched": webhooks.dispatch_outbox(self.db),
             "deliveries": webhooks.deliver_due(self.db, self.settings.data_key, self.resolver, self.transport),
         }

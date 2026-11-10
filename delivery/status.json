@@ -6,7 +6,8 @@
     "M01": "not_met: no supplier selected or contracted; privacy assessment plan not approved",
     "M02": "not_met: AT-01/AT-02 pass in CI-equivalent run, but OIDC/MFA (M02-T02) and environment baseline (M02-T04) are open",
     "M03": "not_met: AT-03/AT-15/AT-23 pass; AT-04 automated portion passes, manual device/screen-reader testing outstanding",
-    "M04": "not_met: AT-05/06/07/11 pass against the DUMMY provider only; no real supplier adapter"
+    "M04": "not_met: AT-05/06/07/11 pass against the DUMMY provider only; no real supplier adapter",
+    "M05": "not_met: AT-09 passes (simulated); AT-08 partial; AT-10/AT-24 open; DPIA, security assessment and processing approval are external"
   },
   "tasks": {
     "M00-T01": {
@@ -148,6 +149,16 @@
         "tests/test_flow.py"
       ],
       "gap": "Independent verifier report pending; real-adapter contract tests blocked on M01."
+    },
+    "M05-T02": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/migrations/0003_deletion_lifecycle.sql",
+        "services/api/src/vv/deletion.py",
+        "services/api/tests/test_at09_deletion.py",
+        "vv-admin replay-tombstones"
+      ],
+      "gap": "Backup expiry is a tracked clock (35 days, proposed) \u2014 no real backup system exists to verify against. Supplier deletion is the DUMMY provider. Retention periods need controller ratification. Evidence object storage (S3) not yet built, so no object deletion path."
     }
   },
   "acceptance_scenarios": {
@@ -162,6 +173,7 @@
     "AT-10": "partial: log/canary checks pass; traces/errors from real infrastructure not tested",
     "AT-11": "pass (fake transport + resolver; no live network delivery)",
     "AT-15": "pass (dummy messenger)",
-    "AT-23": "pass"
+    "AT-23": "pass",
+    "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)"
   }
 }

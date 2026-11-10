@@ -61,6 +61,11 @@ def process_event(db: Database, providers: dict[str, ProviderAdapter], provider_
         return _finish(db, provider_name, event_id, "quarantined", "unknown provider reference")
     tenant_id, session_id, attempt_id = bound["tenant_id"], bound["session_id"], bound["attempt_id"]
     provider = providers[provider_name]
+    with db.tenant_tx(tenant_id) as conn:
+        blocked = conn.execute("SELECT evidence_access_blocked_at IS NOT NULL AS b FROM sessions WHERE tenant_id = %s "
+                               "AND id = %s", (tenant_id, session_id)).fetchone()["b"]
+    if blocked:  # subject deletion requested: do not fetch or store further evidence
+        return _finish(db, provider_name, event_id, "ignored", "subject deletion requested", tenant_id, session_id)
 
     try:
         observation = provider.fetch_result(ev["provider_reference"], correlation_id=event_id)

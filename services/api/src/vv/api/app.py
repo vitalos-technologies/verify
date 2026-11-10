@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, events, service, webhooks
+from vv import auth, deletion, events, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -59,6 +59,19 @@ class WebhookEndpointRequest(Strict):
 class ReplayRequest(Strict):
     event_id: str
     endpoint_id: str
+
+
+class DeleteRequest(Strict):
+    subject_id: str = Field(min_length=1, max_length=128)
+    reason: str = Field(min_length=3, max_length=1000)
+    controller_authorisation_reference: str = Field(min_length=1, max_length=200)
+
+
+class LegalHoldRequest(Strict):
+    subject_id: str
+    owner: str = Field(min_length=3, max_length=200)
+    reason: str = Field(min_length=10, max_length=1000)
+    days: int = Field(ge=1, le=365)
 
 
 class ExchangeRequest(Strict):
@@ -246,6 +259,23 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                                                  payload, run)
         return respond(status, out)
 
+    @app.post("/v1/deletions")
+    def request_deletion(request: Request, principal: Api, body: DeleteRequest, idem: IdemKey = None):
+        principal.require("deletions:create")
+        payload = body.model_dump()
+        with db.tenant_tx(principal.tenant_id) as conn:
+            status, out = service.run_idempotent(
+                conn, settings.data_key, principal.tenant_id, "requestDeletion", idem, payload,
+                lambda c: deletion.request_deletion(c, tenant_id=principal.tenant_id, actor_id=principal.actor_id,
+                                                    body=payload, request_id=request.state.request_id))
+        return respond(status, out)
+
+    @app.get("/v1/deletions/{deletion_id}")
+    def get_deletion(deletion_id: str, principal: Api):
+        principal.require("deletions:read")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return deletion.get_deletion(conn, principal.tenant_id, deletion_id)
+
     # -------------------------------------------------------------- provider callbacks
     @app.post("/callbacks/{provider_name}")
     async def provider_callback(provider_name: str, request: Request):
@@ -364,6 +394,20 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             service.audit(conn, principal.tenant_id, "console", principal.actor_id, "policy.publish", "policy",
                           out["id"], request_id=request.state.request_id)
         return out
+
+    @app.post("/console/legal-holds")
+    def console_legal_hold(request: Request, principal: Console, body: LegalHoldRequest):
+        principal.require("legal_holds:manage")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            subj = conn.execute("SELECT id FROM subjects WHERE tenant_id = %s AND (id = %s OR external_reference = %s)",
+                                (principal.tenant_id, body.subject_id, body.subject_id)).fetchone()
+            if subj is None:
+                raise ApiError(404, "not_found", "Resource not found.")
+            hold_id = deletion.place_legal_hold(conn, principal.tenant_id, subj["id"], body.owner, body.reason,
+                                                body.days)
+            service.audit(conn, principal.tenant_id, "console", principal.actor_id, "legal_hold.place", "subject",
+                          subj["id"], reason=body.reason, request_id=request.state.request_id)
+        return respond(201, {"id": hold_id, "state": "active"})
 
     @app.get("/console/verifications/{session_id}")
     def console_get_verification(session_id: str, principal: Console):

@@ -48,6 +48,8 @@ OUTAGE_SCENARIO = "provider_outage"  # fetch_result raises ProviderUnavailable
 class DummyProvider:
     name = "dummy"
 
+    deletion_confirm_delay_seconds = 0  # tests raise this to simulate slow supplier deletion
+
     def __init__(self, db: Database, secret: bytes, environment: str) -> None:
         if environment not in {"development", "test", "ci"}:
             raise RuntimeError("DummyProvider is disabled outside development/test/ci")
@@ -107,9 +109,17 @@ class DummyProvider:
 
     def request_deletion(self, provider_reference: str, *, correlation_id: str) -> str:
         with self.db.system_tx() as conn:
-            conn.execute("UPDATE dummy_provider_attempts SET status = 'deleted', scenario = NULL "
-                         "WHERE provider_reference = %s", (provider_reference,))
+            conn.execute("UPDATE dummy_provider_attempts SET deletion_requested_at = coalesce(deletion_requested_at, "
+                         "now()) WHERE provider_reference = %s", (provider_reference,))
         return f"dmydel_{provider_reference}"
+
+    def deletion_confirmed(self, provider_reference: str, *, correlation_id: str) -> bool:
+        with self.db.system_tx() as conn:
+            row = conn.execute(
+                "UPDATE dummy_provider_attempts SET status = 'deleted', scenario = NULL WHERE provider_reference = %s "
+                "AND deletion_requested_at <= now() - make_interval(secs => %s) RETURNING status",
+                (provider_reference, self.deletion_confirm_delay_seconds)).fetchone()
+        return row is not None
 
     # -- simulated supplier-side behaviour (hosted capture + callback) -----
     def simulate_capture(self, capture_token: str, scenario: str) -> str:

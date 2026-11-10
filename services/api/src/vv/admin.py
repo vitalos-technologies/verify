@@ -74,6 +74,7 @@ def main() -> None:
     roles.add_argument("--app-password", default=os.environ.get("VV_APP_PASSWORD", "vv_app_local"))
     roles.add_argument("--worker-password", default=os.environ.get("VV_WORKER_PASSWORD", "vv_worker_local"))
     sub.add_parser("seed-dev")
+    sub.add_parser("replay-tombstones", help="Re-apply all deletions after a backup restore (run before serving)")
     args = parser.parse_args()
     dsn = os.environ.get("VV_OWNER_DSN")
     if not dsn:
@@ -85,5 +86,8 @@ def main() -> None:
             raise SystemExit("dev-roles is only available in development/test/ci")
         set_runtime_passwords(dsn, args.app_password, args.worker_password)
         print(json.dumps({"status": "ok"}))
+    elif args.cmd == "replay-tombstones":
+        from vv.deletion import replay_tombstones
+        print(json.dumps({"replayed": replay_tombstones(dsn)}))
     elif args.cmd == "seed-dev":
         print(json.dumps(seed_dev(dsn), indent=2))
