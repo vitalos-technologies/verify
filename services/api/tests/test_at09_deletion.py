@@ -135,7 +135,7 @@ def test_tombstone_replay_after_restore(client, worker, make_tenant, settings, o
                   (t.id,))
     owner.execute("UPDATE sessions SET external_reference = 'restore-me', evidence_access_blocked_at = NULL "
                   "WHERE id = %s", (sid,))
-    assert replay_tombstones(OWNER_DSN) >= 1
+    assert replay_tombstones(OWNER_DSN)["redacted"] >= 1
     with psycopg.connect(OWNER_DSN, row_factory=dict_row) as conn:
         s = conn.execute("SELECT external_reference, evidence_access_blocked_at FROM sessions WHERE id = %s",
                          (sid,)).fetchone()

@@ -95,16 +95,18 @@ def main() -> None:
         print(json.dumps({"status": "ok"}))
     elif args.cmd == "replay-tombstones":
         from vv.deletion import replay_tombstones
-        from vv.evidence import LocalSealedStore
+        from vv.evidence import make_store
+        from vv.tombstones import make_log
         s = load_settings()
-        print(json.dumps({"replayed": replay_tombstones(dsn, LocalSealedStore(s.evidence_dir, s.data_key))}))
+        print(json.dumps({"replayed": replay_tombstones(dsn, make_store(s), make_log(s))}))
     elif args.cmd == "recovery-exercise":
         from pathlib import Path
 
-        from vv.evidence import LocalSealedStore
+        from vv.evidence import make_store
         from vv.recovery import run_exercise
+        from vv.tombstones import make_log
         s = load_settings()
-        report = run_exercise(dsn, LocalSealedStore(s.evidence_dir, s.data_key))
+        report = run_exercise(dsn, make_store(s), log=make_log(s))
         out = Path(args.report_dir)
         out.mkdir(parents=True, exist_ok=True)
         path = out / f"{report['started_at'][:19].replace(':', '')}.json"

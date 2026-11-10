@@ -60,8 +60,10 @@ export function toIdentityStatus(s: Session): IdentityStatus {
 }
 
 export interface Store {
-  /** Returns false if the event ID was already recorded (atomic insert in the caller's database). */
-  recordEvent(tenant: string, eventId: string): Promise<boolean>;
+  /** True if this event ID was already applied (read-only check). */
+  hasEvent(tenant: string, eventId: string): Promise<boolean>;
+  /** Records the event ID after its effect is saved (same transaction as saveStatus where possible). */
+  recordEvent(tenant: string, eventId: string): Promise<void>;
   latestRevision(tenant: string, verificationId: string): Promise<number>;
   saveStatus(tenant: string, status: IdentityStatus): Promise<void>;
 }
@@ -114,15 +116,26 @@ export class WebhookProcessor {
   async handle(rawBody: string, headers: Record<string, string | undefined>, now?: number):
     Promise<{ outcome: "applied" | "duplicate" | "stale" | "ignored"; status?: IdentityStatus }> {
     const env = verifyWebhook(rawBody, headers, this.secrets, this.tenantReference, now);
-    if (!(await this.store.recordEvent(this.tenantReference, env.id))) return { outcome: "duplicate" };
-    if (!env.type.startsWith("verification.")) return { outcome: "ignored" };
+    if (await this.store.hasEvent(this.tenantReference, env.id)) return { outcome: "duplicate" };
+    if (!env.type.startsWith("verification.")) {
+      await this.store.recordEvent(this.tenantReference, env.id);
+      return { outcome: "ignored" };
+    }
     const known = await this.store.latestRevision(this.tenantReference, env.resource_id);
-    if (env.resource_version <= known) return { outcome: "stale" };
+    if (env.resource_version <= known) {
+      await this.store.recordEvent(this.tenantReference, env.id);
+      return { outcome: "stale" };
+    }
     // Authoritative read before any consequential workflow change; events can arrive out of order.
+    // If this throws, nothing is recorded, so the sender's retry is processed (verifier finding D-J).
     const latest = await this.client.getVerification(env.resource_id);
-    if (latest.revision <= known) return { outcome: "stale" };
+    if (latest.revision <= known) {
+      await this.store.recordEvent(this.tenantReference, env.id);
+      return { outcome: "stale" };
+    }
     const status = toIdentityStatus(latest);
     await this.store.saveStatus(this.tenantReference, status);
+    await this.store.recordEvent(this.tenantReference, env.id);
     return { outcome: "applied", status };
   }
 }

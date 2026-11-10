@@ -22,7 +22,10 @@ import jwt
 from vv import crypto
 from vv.errors import ApiError
 
-MFA_AMR = {"mfa", "otp", "hwk", "swk", "sc", "fpt", "face", "iris", "pop"}
+# RFC 8176 methods grouped into factor categories; MFA needs two different categories, or an explicit "mfa".
+KNOWLEDGE = {"pwd", "pin", "kba"}
+POSSESSION = {"otp", "sms", "tel", "hwk", "swk", "sc", "pop"}
+INHERENCE = {"fpt", "face", "iris", "retina", "vbm"}
 LOGIN_TTL_SECONDS = 600
 STEP_UP_SECONDS = 15 * 60
 
@@ -59,11 +62,13 @@ class OidcClient:
             self._jwks = (time.time(), jwt.PyJWKSet.from_dict(r.json()))
         return self._jwks[1]
 
-    def authorize_url(self, state: str, nonce: str, verifier: str) -> str:
+    def authorize_url(self, state: str, nonce: str, verifier: str, max_age: int) -> str:
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
         q = {"response_type": "code", "client_id": self.cfg.client_id, "redirect_uri": self.cfg.redirect_uri,
              "scope": "openid email", "state": state, "nonce": nonce, "code_challenge": challenge,
-             "code_challenge_method": "S256"}
+             "code_challenge_method": "S256", "max_age": str(max_age)}
+        if max_age == 0:
+            q["prompt"] = "login"
         return self.meta()["authorization_endpoint"] + "?" + urlencode(q)
 
     def exchange(self, code: str, verifier: str) -> str:
@@ -98,32 +103,49 @@ def has_mfa(claims: dict) -> bool:
     if not isinstance(amr, list):
         return False
     methods = {str(a) for a in amr}
-    return bool(methods & MFA_AMR) or len(methods) >= 2
+    if "mfa" in methods:
+        return True
+    categories = sum(1 for group in (KNOWLEDGE, POSSESSION, INHERENCE) if methods & group)
+    return categories >= 2
 
 
-def start(conn, client: OidcClient, data_key: bytes, tenant_hint: str | None) -> str:
+def start(conn, client: OidcClient, data_key: bytes, tenant_hint: str | None, *,
+          reauth: bool = False) -> tuple[str, str]:
+    """Returns (authorize_url, browser_binding). The binding goes in an HttpOnly cookie (login CSRF, D-G)."""
     state, nonce, verifier = crypto.random_token(24), crypto.random_token(24), crypto.random_token(48)
-    conn.execute("INSERT INTO oidc_logins (state_hash, nonce, verifier_sealed, tenant_hint, expires_at) "
-                 "VALUES (%s,%s,%s,%s, now() + make_interval(secs => %s))",
+    binding = crypto.random_token(24)
+    max_age = 0 if reauth else STEP_UP_SECONDS
+    conn.execute("INSERT INTO oidc_logins (state_hash, nonce, verifier_sealed, tenant_hint, expires_at, "
+                 "browser_binding_hash, max_age) VALUES (%s,%s,%s,%s, now() + make_interval(secs => %s), %s, %s)",
                  (crypto.token_hash(state), nonce, crypto.seal(data_key, verifier.encode(), b"oidc"), tenant_hint,
-                  LOGIN_TTL_SECONDS))
-    return client.authorize_url(state, nonce, verifier)
+                  LOGIN_TTL_SECONDS, crypto.token_hash(binding), max_age))
+    return client.authorize_url(state, nonce, verifier, max_age), binding
 
 
-def finish(db, client: OidcClient, data_key: bytes, code: str, state: str) -> dict:
-    """Returns {'subject', 'claims', 'tenant_hint'} after full verification. One-use state."""
+def finish(db, client: OidcClient, data_key: bytes, code: str, state: str, binding: str | None) -> dict:
+    """Returns {'subject', 'claims', 'tenant_hint'} after full verification. One-use state bound to the browser."""
     with db.system_tx() as conn:
         row = conn.execute("UPDATE oidc_logins SET used_at = now() WHERE state_hash = %s AND used_at IS NULL "
-                           "AND expires_at > now() RETURNING *", (crypto.token_hash(state or ""),)).fetchone()
+                           "AND expires_at > now() AND browser_binding_hash = %s RETURNING *, "
+                           "extract(epoch FROM created_at)::bigint AS started",
+                           (crypto.token_hash(state or ""), crypto.token_hash(binding or ""))).fetchone()
     if row is None:
         raise ApiError(401, "sign_in_failed", "Sign-in expired. Please try again.")
     verifier = crypto.unseal(data_key, bytes(row["verifier_sealed"]), b"oidc").decode()
     claims = client.verify(client.exchange(code, verifier), row["nonce"])
     if not has_mfa(claims):
         raise ApiError(403, "mfa_required", "Sign in with multi-factor authentication.")
+    auth_time = claims.get("auth_time")
+    if isinstance(auth_time, int | float):
+        auth_time = int(auth_time)
+        if auth_time > time.time() + 60:
+            raise ApiError(401, "sign_in_failed", "Sign-in failed.")
+        if row["max_age"] == 0 and auth_time < row["started"] - 60:
+            raise ApiError(401, "reauth_required", "Please sign in again.")  # IdP ignored prompt=login
+    else:
+        auth_time = 0  # unknown: sign-in allowed, but step-up is never satisfied without auth_time (D-I)
     return {"subject": f"{claims['iss']}|{claims['sub']}", "claims": claims, "tenant_hint": row["tenant_hint"],
-            "amr": [str(a) for a in claims.get("amr", [])],
-            "auth_time": int(claims.get("auth_time") or claims["iat"])}
+            "amr": [str(a) for a in claims.get("amr", [])], "auth_time": auth_time}
 
 
 def describe(claims: dict) -> str:

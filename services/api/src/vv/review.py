@@ -159,9 +159,15 @@ def claim_appeal(conn, tenant_id: str, appeal_id: str, member: str) -> dict:
         raise not_found()
     if a["status"] == "resolved":
         raise conflict("appeal_resolved", "This appeal is already resolved.")
-    original = conn.execute("SELECT actor_id FROM decisions WHERE tenant_id = %s AND session_id = %s AND revision = %s",
-                            (tenant_id, a["session_id"], a["appealed_revision"])).fetchone()
-    if original and original["actor_id"] == member:
+    original = conn.execute("SELECT actor_id, trace FROM decisions WHERE tenant_id = %s AND session_id = %s "
+                            "AND revision = %s", (tenant_id, a["session_id"], a["appealed_revision"])).fetchone()
+    involved = set()
+    if original:
+        involved.add(original["actor_id"])
+        second = ((original["trace"] or {}).get("review") or {}).get("second_reviewer")
+        if second:
+            involved.add(second)  # the co-signer of an override is also conflicted (D-F)
+    if member in involved:
         others = conn.execute("SELECT count(*) AS n FROM memberships WHERE tenant_id = %s AND active AND id <> %s "
                               "AND role = ANY(%s)", (tenant_id, member, list(REVIEW_ROLES))).fetchone()["n"]
         if others > 0:
@@ -179,6 +185,42 @@ def resolve_appeal(conn, tenant_id: str, appeal_id: str, member: str, body: dict
         raise not_found()
     if a["status"] != "claimed" or a["assignee"] != member:
         raise conflict("claim_required", "Claim the appeal before resolving it.")
+    if body["outcome"] == "approved" and body["method"] == "alternative_method":
+        # High-impact override needs a second, different reviewer here too (D-D).
+        s0 = get_session(conn, tenant_id, a["session_id"])
+        if s0["version"] != body["expected_revision"]:
+            raise conflict("revision.stale", "The verification changed since you loaded it; reload and retry.")
+        a = conn.execute("UPDATE appeals SET status = 'awaiting_second_review', proposal = %s, proposed_by = %s "
+                         "WHERE tenant_id = %s AND id = %s RETURNING *",
+                         (json.dumps(body), member, tenant_id, appeal_id)).fetchone()
+        audit(conn, tenant_id, "console", member, "appeal.override_proposed", "appeal", appeal_id,
+              request_id=request_id)
+        return {"appeal": _appeal_out(a), "session": None}
+    return _apply_appeal(conn, tenant_id, a, member, body, request_id)
+
+
+def second_review_appeal(conn, tenant_id: str, appeal_id: str, member: str, confirm: bool, request_id: str) -> dict:
+    a = conn.execute("SELECT * FROM appeals WHERE tenant_id = %s AND id = %s FOR UPDATE",
+                     (tenant_id, appeal_id)).fetchone()
+    if a is None:
+        raise not_found()
+    if a["status"] != "awaiting_second_review":
+        raise conflict("no_pending_override", "There is no override waiting for a second review.")
+    if a["proposed_by"] == member:
+        raise forbidden("A second reviewer must be a different person.")
+    if not confirm:
+        a = conn.execute("UPDATE appeals SET status = 'claimed', proposal = NULL WHERE tenant_id = %s AND id = %s "
+                         "RETURNING *", (tenant_id, appeal_id)).fetchone()
+        audit(conn, tenant_id, "console", member, "appeal.override_rejected", "appeal", appeal_id)
+        return {"appeal": _appeal_out(a), "session": None}
+    out = _apply_appeal(conn, tenant_id, a, a["proposed_by"], a["proposal"], request_id, second_reviewer=member)
+    audit(conn, tenant_id, "console", member, "appeal.override_confirmed", "appeal", appeal_id)
+    return out
+
+
+def _apply_appeal(conn, tenant_id: str, a: dict, member: str, body: dict, request_id: str,
+                  second_reviewer: str | None = None) -> dict:
+    appeal_id = a["id"]
     s = get_session(conn, tenant_id, a["session_id"], for_update=True)
     if s["version"] != body["expected_revision"]:
         raise conflict("revision.stale", "The verification changed since you loaded it; reload and retry.")
@@ -202,7 +244,8 @@ def resolve_appeal(conn, tenant_id: str, appeal_id: str, member: str, body: dict
         (tenant_id, new_id("dec"), s["id"], revision, body["outcome"], member, body["method"], reasons,
          body["reason"], policy["id"], policy["key"], policy["version"], body["evidence_ids"],
          json.dumps({"appeal": {"id": appeal_id, "appealed_revision": a["appealed_revision"],
-                                "failing_required_checks": failing}}), revision - 1))
+                                "failing_required_checks": failing},
+                     "review": {"second_reviewer": second_reviewer}}), revision - 1))
     # Explicit reopening: a new revision and event, never a silent rewrite.
     s = conn.execute("UPDATE sessions SET state = %s, version = version + 1, updated_at = now() WHERE tenant_id = %s "
                      "AND id = %s AND version = %s RETURNING *",

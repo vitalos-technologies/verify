@@ -12,7 +12,8 @@ class MemStore implements Store {
   events = new Set<string>();
   revs = new Map<string, number>();
   saved: IdentityStatus[] = [];
-  async recordEvent(t: string, id: string) { const k = `${t}|${id}`; if (this.events.has(k)) return false; this.events.add(k); return true; }
+  async hasEvent(t: string, id: string) { return this.events.has(`${t}|${id}`); }
+  async recordEvent(t: string, id: string) { this.events.add(`${t}|${id}`); }
   async latestRevision(t: string, v: string) { return this.revs.get(`${t}|${v}`) ?? 0; }
   async saveStatus(t: string, s: IdentityStatus) { this.revs.set(`${t}|${s.verificationId}`, s.revision); this.saved.push(s); }
 }
@@ -81,4 +82,19 @@ test("identity status never asserts work eligibility", () => {
     assert.ok(!/eligib|right[_ -]?to[_ -]?work":|work_permit|cleared/.test(text.replace("not a right-to-work", "")));
     assert.match(s.note, /Not a right-to-work/);
   }
+});
+
+test("a failed authoritative fetch does not swallow the retry (D-J)", async () => {
+  let fail = true;
+  const api = (async () => {
+    if (fail) throw new Error("network");
+    return new Response(JSON.stringify({ id: "ver_9", external_reference: "w", state: "approved", revision: 2, decision: null }), { status: 200 });
+  }) as unknown as typeof fetch;
+  const store = new MemStore();
+  const p = new WebhookProcessor("ten_A", ["secret-ten_A"], new VerifyClient("https://verify.example", "k", api), store);
+  const e = event("ten_A", "evt_retry", "ver_9", 2, "approved");
+  await assert.rejects(p.handle(e.body, e.headers, NOW));
+  fail = false;
+  assert.equal((await p.handle(e.body, e.headers, NOW)).outcome, "applied");
+  assert.equal((await p.handle(e.body, e.headers, NOW)).outcome, "duplicate");
 });

@@ -27,6 +27,16 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
 }
 
 
+# API scopes a console role may delegate to a key it creates (verifier finding D-E): never more than the role holds.
+ROLE_API_SCOPES: dict[str, frozenset[str]] = {
+    "owner": API_SCOPES,
+    "administrator": frozenset({"sessions:create", "sessions:read", "decisions:write"}),
+    "developer": frozenset({"sessions:create", "sessions:read", "webhooks:manage", "deletions:read"}),
+    "reviewer": frozenset(),
+    "auditor": frozenset(),
+}
+
+
 @dataclass(frozen=True)
 class Principal:
     tenant_id: str

@@ -243,6 +243,12 @@ def create_session(conn, *, tenant_id: str, actor_id: str, body: dict, coverage:
         raise ApiError(429, "quota.monthly_cap_reached", "The monthly verification cap for this organisation has been "
                        "reached. Existing verifications are unaffected.")
 
+    pending = conn.execute(
+        "SELECT 1 FROM subjects s JOIN deletion_jobs d ON d.tenant_id = s.tenant_id AND d.subject_id = s.id "
+        "WHERE s.tenant_id = %s AND s.external_reference = %s AND d.state <> 'complete'",
+        (tenant_id, body["external_reference"])).fetchone()
+    if pending:
+        raise conflict("subject_deletion_pending", "A deletion is in progress for this reference.")
     subject = conn.execute(
         "INSERT INTO subjects (tenant_id, id, external_reference) VALUES (%s,%s,%s) "
         "ON CONFLICT (tenant_id, external_reference) DO UPDATE SET external_reference = EXCLUDED.external_reference "

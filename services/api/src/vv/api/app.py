@@ -405,18 +405,23 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                             secure=not settings.is_non_production or settings.hosted_base_url.startswith("https"))
 
     @app.get("/console/oidc/start")
-    def oidc_start(tenant: str | None = None):
+    def oidc_start(tenant: str | None = None, reauth: bool = False):
         if oidc_client is None:
             raise ApiError(404, "not_found", "Resource not found.")
         with db.system_tx() as conn:
-            url = oidc.start(conn, oidc_client, settings.data_key, tenant)
-        return RedirectResponse(url, status_code=302)
+            url, binding = oidc.start(conn, oidc_client, settings.data_key, tenant, reauth=reauth)
+        response = RedirectResponse(url, status_code=302)
+        # Lax (not Strict) so the cookie returns on the IdP's top-level redirect back to the callback.
+        response.set_cookie("vv_oidc", binding, max_age=oidc.LOGIN_TTL_SECONDS, path="/console/oidc", httponly=True,
+                            samesite="lax",
+                            secure=not settings.is_non_production or settings.hosted_base_url.startswith("https"))
+        return response
 
     @app.get("/console/oidc/callback")
-    def oidc_callback(code: str = "", state: str = ""):
+    def oidc_callback(request: Request, code: str = "", state: str = ""):
         if oidc_client is None:
             raise ApiError(404, "not_found", "Resource not found.")
-        result = oidc.finish(db, oidc_client, settings.data_key, code, state)
+        result = oidc.finish(db, oidc_client, settings.data_key, code, state, request.cookies.get("vv_oidc"))
         with db.system_tx() as conn:
             members = list(conn.execute("SELECT * FROM vv_memberships_for_subject(%s)", (result["subject"],)))
         if result["tenant_hint"]:
@@ -434,6 +439,7 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                           reason="oidc+mfa")
         response = RedirectResponse(settings.console_base_url.rstrip("/") + "/app", status_code=302)
         set_console_cookies(response, token, csrf_token)
+        response.delete_cookie("vv_oidc", path="/console/oidc")
         return response
 
     @app.post("/console/api-keys")
@@ -441,6 +447,10 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         principal.require("api_keys:manage")
         principal.require_recent_auth()
         with db.tenant_tx(principal.tenant_id) as conn:
+            role = conn.execute("SELECT role FROM memberships WHERE tenant_id = %s AND id = %s",
+                                (principal.tenant_id, principal.actor_id)).fetchone()["role"]
+            if not set(body.scopes) <= auth.ROLE_API_SCOPES[role]:
+                raise ApiError(403, "scope_exceeds_role", "Your role cannot create a key with these scopes.")
             key_id, raw = auth.create_api_key(conn, settings.hmac_pepper, settings.environment, principal.tenant_id,
                                               body.scopes, body.label, principal.actor_id)
             service.audit(conn, principal.tenant_id, "console", principal.actor_id, "api_key.create", "api_key",
@@ -541,6 +551,13 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         principal.require("decisions:write")
         with db.tenant_tx(principal.tenant_id) as conn:
             return review.claim_appeal(conn, principal.tenant_id, appeal_id, principal.actor_id)
+
+    @app.post("/console/appeals/{appeal_id}/second-review")
+    def console_appeal_second_review(request: Request, appeal_id: str, principal: Console, body: SecondReview):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.second_review_appeal(conn, principal.tenant_id, appeal_id, principal.actor_id,
+                                               body.confirm, request.state.request_id)
 
     @app.post("/console/appeals/{appeal_id}/resolve")
     def console_appeal_resolve(request: Request, appeal_id: str, principal: Console, body: AppealResolve):

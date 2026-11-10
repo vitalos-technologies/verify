@@ -38,7 +38,7 @@ def _counts(conn) -> dict[str, int]:
             for t in TABLES}
 
 
-def run_exercise(source_owner_dsn: str, store: LocalSealedStore, *, keep: bool = False) -> dict:
+def run_exercise(source_owner_dsn: str, store: LocalSealedStore, *, keep: bool = False, log=None) -> dict:
     started = time.monotonic()
     stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     restore_db = f"vv_restore_{stamp}"
@@ -75,14 +75,13 @@ def run_exercise(source_owner_dsn: str, store: LocalSealedStore, *, keep: bool =
                           "'recovery_exercise' WHERE processing_state IN ('pending','retry','processing')")
                 r.commit()
             step("outbound_disabled")
-            replayed = replay_tombstones(restore_dsn, store=None)  # objects are not restored into the copy
-            step("tombstones_replayed", count=replayed)
+            replayed = replay_tombstones(restore_dsn, store=None, log=log)  # objects are not restored into the copy
+            step("tombstones_replayed", **replayed)
             with psycopg.connect(restore_dsn, row_factory=dict_row) as r:
                 restored_counts = _counts(r)
                 leaked = r.execute(
                     "SELECT count(*) AS n FROM deletion_tombstones t JOIN sessions s ON s.tenant_id = t.tenant_id "
-                    "AND s.id = ANY(t.session_ids) WHERE s.external_reference <> 'deleted' OR "
-                    "s.evidence_access_blocked_at IS NULL").fetchone()["n"]
+                    "AND s.subject_id = t.subject_id WHERE s.evidence_access_blocked_at IS NULL").fetchone()["n"]
                 migrations = [x["version"] for x in r.execute("SELECT version FROM schema_migrations ORDER BY 1")]
                 rls = r.execute("SELECT count(*) AS n FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                                 "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity").fetchone()["n"]

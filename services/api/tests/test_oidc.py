@@ -175,6 +175,9 @@ def test_oidc_routes_absent_without_configuration(client):
 
 
 def test_amr_rules():
-    assert oidc.has_mfa({"amr": ["mfa"]}) and oidc.has_mfa({"amr": ["pwd", "otp"]}) and oidc.has_mfa({"amr": ["hwk"]})
-    assert not oidc.has_mfa({"amr": ["pwd"]}) and not oidc.has_mfa({}) and not oidc.has_mfa({"amr": "mfa"})
+    assert oidc.has_mfa({"amr": ["mfa"]}) and oidc.has_mfa({"amr": ["pwd", "otp"]})
+    assert oidc.has_mfa({"amr": ["hwk", "pin"]}) and oidc.has_mfa({"amr": ["swk", "face"]})
+    for single in (["pwd"], ["hwk"], ["otp"], ["pwd", "kba"], ["pwd", "rba"], ["swk"], ["face"]):
+        assert not oidc.has_mfa({"amr": single}), single
+    assert not oidc.has_mfa({}) and not oidc.has_mfa({"amr": "mfa"})
     json.dumps(oidc.describe({"iss": ISS, "amr": ["mfa"]}))

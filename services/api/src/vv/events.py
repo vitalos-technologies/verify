@@ -106,7 +106,9 @@ def process_event(db: Database, providers: dict[str, ProviderAdapter], provider_
                                (tenant_id, attempt_id)).fetchone()
         latest_seq = conn.execute("SELECT max(sequence) AS m FROM attempts WHERE tenant_id = %s AND session_id = %s",
                                   (tenant_id, session_id)).fetchone()["m"]
-        if s["state"] in TERMINAL or s["state"] in ("review_required", "action_required"):
+        if s["evidence_access_blocked_at"] is not None:
+            note, conn_state = "subject deletion requested", "ignored"
+        elif s["state"] in TERMINAL or s["state"] in ("review_required", "action_required"):
             note = "late event for decided session; decision unchanged"
             conn_state = "ignored"
         elif attempt["sequence"] != latest_seq or attempt["state"] == "superseded":

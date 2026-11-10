@@ -114,19 +114,52 @@ def place_legal_hold(conn, tenant_id: str, subject_id: str, owner: str, reason: 
     return hold_id
 
 
-def _redact_primary(conn, tenant_id: str, subject_id: str, session_ids: list[str], store=None) -> None:
+def _subject_sessions(conn, tenant_id: str, subject_id: str) -> list[str]:
+    return [r["id"] for r in conn.execute("SELECT id FROM sessions WHERE tenant_id = %s AND subject_id = %s",
+                                          (tenant_id, subject_id))]
+
+
+def _block_access(conn, tenant_id: str, subject_id: str) -> list[str]:
+    """Non-destructive: deny evidence access and end applicant sessions for every session of the subject."""
+    ids = _subject_sessions(conn, tenant_id, subject_id)
+    conn.execute("UPDATE sessions SET evidence_access_blocked_at = coalesce(evidence_access_blocked_at, now()) "
+                 "WHERE tenant_id = %s AND id = ANY(%s)", (tenant_id, ids))
+    conn.execute("UPDATE applicant_sessions SET expires_at = least(expires_at, now()) WHERE tenant_id = %s "
+                 "AND session_id = ANY(%s)", (tenant_id, ids))
+    return ids
+
+
+def _redact_primary(conn, tenant_id: str, subject_id: str, session_ids: list[str] | None = None, store=None) -> None:
+    """Redacts by SUBJECT, so sessions created after the request are covered too (verifier finding D-B)."""
+    ids = _block_access(conn, tenant_id, subject_id)
     if store is not None:
         from vv.evidence import delete_for_sessions
-        delete_for_sessions(conn, store, tenant_id, session_ids)
+        delete_for_sessions(conn, store, tenant_id, ids)
     conn.execute("UPDATE subjects SET external_reference = 'deleted:' || id, deleted_at = coalesce(deleted_at, now()) "
                  "WHERE tenant_id = %s AND id = %s", (tenant_id, subject_id))
-    conn.execute("UPDATE sessions SET external_reference = 'deleted', evidence_access_blocked_at = "
-                 "coalesce(evidence_access_blocked_at, now()) WHERE tenant_id = %s AND id = ANY(%s)",
-                 (tenant_id, session_ids))
+    conn.execute("UPDATE sessions SET external_reference = 'deleted' WHERE tenant_id = %s AND id = ANY(%s)",
+                 (tenant_id, ids))
     conn.execute("UPDATE contact_challenges SET destination_hash = 'deleted', code_hash = 'deleted' "
-                 "WHERE tenant_id = %s AND session_id = ANY(%s)", (tenant_id, session_ids))
+                 "WHERE tenant_id = %s AND session_id = ANY(%s)", (tenant_id, ids))
     conn.execute("UPDATE provider_events SET raw_body = NULL WHERE tenant_id = %s AND session_id = ANY(%s)",
-                 (tenant_id, session_ids))
+                 (tenant_id, ids))
+
+
+def export_tombstones(worker_db: Database, log, limit: int = 100) -> int:
+    """Copies deletion state to the external tombstone log (outside DB backups). Idempotent per version."""
+    with worker_db.system_tx() as conn:
+        rows = list(conn.execute("SELECT tenant_id, id FROM deletion_jobs WHERE state <> 'complete' "
+                                 "AND exported_version < version LIMIT %s", (limit,)))
+    for r in rows:
+        with worker_db.tenant_tx(r["tenant_id"]) as conn:
+            j = conn.execute("SELECT * FROM deletion_jobs WHERE tenant_id = %s AND id = %s FOR UPDATE",
+                             (r["tenant_id"], r["id"])).fetchone()
+            log.put({"tenant_id": j["tenant_id"], "subject_id": j["subject_id"], "deletion_id": j["id"],
+                     "state": j["state"], "version": j["version"],
+                     "requested_at": j["created_at"].isoformat()})
+            conn.execute("UPDATE deletion_jobs SET exported_version = %s WHERE tenant_id = %s AND id = %s",
+                         (j["version"], r["tenant_id"], r["id"]))
+    return len(rows)
 
 
 def advance_deletions(worker_db: Database, providers: dict[str, ProviderAdapter], limit: int = 50,
@@ -208,14 +241,43 @@ def _advance_one(db: Database, providers: dict[str, ProviderAdapter], tenant_id:
             _set_state(conn, job, "complete")
 
 
-def replay_tombstones(owner_dsn: str, store=None) -> int:
-    """After restoring a backup, re-apply every deletion before serving traffic (18_operations §Recovery)."""
+def replay_tombstones(owner_dsn: str, store=None, log=None) -> dict:
+    """After restoring a backup, re-apply deletions BEFORE serving traffic (18_operations §Recovery, AT-09).
+
+    Sources: the external tombstone log (covers deletions newer than the backup, D-A) plus any tombstones in
+    the restored database. Subjects under an active legal hold, or whose job was on hold, only have access
+    blocked: nothing is destroyed (D-C). Deletion jobs missing from the restore are re-created so the
+    worker resumes supplier and backup tracking.
+    """
+    entries: dict[tuple[str, str], dict] = {}
+    for e in (log.all() if log is not None else []):
+        entries[(e["tenant_id"], e["deletion_id"])] = e
+    redacted = held = missing = 0
     with psycopg.connect(owner_dsn, row_factory=dict_row) as conn:
-        tombs = list(conn.execute("SELECT * FROM deletion_tombstones"))
-        for t in tombs:
-            conn.execute("SELECT set_config('app.tenant_id', %s, true)", (t["tenant_id"],))
-            _redact_primary(conn, t["tenant_id"], t["subject_id"], t["session_ids"], store)
-            conn.execute("UPDATE applicant_sessions SET expires_at = least(expires_at, now()) WHERE tenant_id = %s "
-                         "AND session_id = ANY(%s)", (t["tenant_id"], t["session_ids"]))
+        for t in conn.execute("SELECT t.*, j.state FROM deletion_tombstones t LEFT JOIN deletion_jobs j ON "
+                              "j.tenant_id = t.tenant_id AND j.id = t.deletion_id").fetchall():
+            entries.setdefault((t["tenant_id"], t["deletion_id"]), {
+                "tenant_id": t["tenant_id"], "subject_id": t["subject_id"], "deletion_id": t["deletion_id"],
+                "state": t["state"]})
+        for e in entries.values():
+            tid, sid = e["tenant_id"], e["subject_id"]
+            conn.execute("SELECT set_config('app.tenant_id', %s, true)", (tid,))
+            if conn.execute("SELECT 1 FROM subjects WHERE tenant_id = %s AND id = %s", (tid, sid)).fetchone() is None:
+                missing += 1  # subject created after the backup: nothing restored to delete
+                continue
+            ids = _subject_sessions(conn, tid, sid)
+            conn.execute("INSERT INTO deletion_tombstones (tenant_id, subject_id, deletion_id, session_ids) "
+                         "VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", (tid, sid, e["deletion_id"], ids))
+            conn.execute("INSERT INTO deletion_jobs (tenant_id, id, subject_id, reason, "
+                         "controller_authorisation_reference, state, requested_by) VALUES "
+                         "(%s,%s,%s,'re-applied after restore','tombstone-log',%s,'recovery') ON CONFLICT DO NOTHING",
+                         (tid, e["deletion_id"], sid, "on_hold" if e.get("state") == "on_hold" else "in_progress"))
+            hold = e.get("state") == "on_hold" or _active_hold(conn, tid, sid)
+            if hold:
+                _block_access(conn, tid, sid)
+                held += 1
+            else:
+                _redact_primary(conn, tid, sid, store=store)
+                redacted += 1
         conn.commit()
-    return len(tombs)
+    return {"entries": len(entries), "redacted": redacted, "held": held, "subject_not_in_restore": missing}

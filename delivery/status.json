@@ -244,12 +244,12 @@
     "AT-05": "pass (dummy provider)",
     "AT-06": "pass (dummy provider)",
     "AT-07": "pass",
-    "AT-08": "pass (leases, stale lock/revision, immutable checks, second review, appeals)",
+    "AT-08": "pass (leases, stale lock/revision, immutable checks, second review in review and appeal paths, conflict of interest)",
     "AT-10": "partial: log canaries incl. evidence markers pass; real infrastructure telemetry not tested",
     "AT-11": "pass (fake transport + resolver; no live network delivery)",
     "AT-15": "pass (dummy messenger)",
     "AT-23": "pass",
-    "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)",
+    "AT-09": "pass (incl. restore of a pre-deletion backup via the external tombstone log, legal-hold-safe replay)",
     "AT-12": "pass (synthetic; supplier invoice simulated)",
     "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)",
     "AT-14": "partial: isolated logical restore exercise passes (counts match, tombstones replayed, outbound disabled, copy destroyed); not production-equivalent",
@@ -271,6 +271,24 @@
         "D8": "fixed: contact verify refused after session leaves active states",
         "D9": "fixed: Session.decision (method, actor_type, reasons) + reviewer_reference; contract 1.1.0"
       }
+    },
+    "a3be6ec": {
+      "by": "separate verifier agent (second pass)",
+      "result": "AT-12 and AT-24 pass; AT-09, the second-review rule (AT-08), OIDC and the client failed; 10 defects",
+      "defects": {
+        "D-A": "fixed: tombstones exported to an external log (S3/local) outside DB backups; replay reads it and re-creates missing jobs",
+        "D-B": "fixed: redaction by subject; new sessions refused while a subject deletion is pending",
+        "D-C": "fixed: replay only blocks access (no destruction) under legal hold or on_hold jobs",
+        "D-D": "fixed: appeal approval by alternative method needs a second, different reviewer",
+        "D-E": "fixed: console API keys capped to the creating role's scopes",
+        "D-F": "fixed: the co-signer of an override is conflicted for the appeal",
+        "D-G": "fixed: OIDC state bound to the starting browser via an HttpOnly cookie",
+        "D-H": "fixed: MFA needs 'mfa' or two factor categories (RFC 8176)",
+        "D-I": "fixed: max_age always sent, prompt=login for reauth; missing auth_time never satisfies step-up",
+        "D-J": "fixed in packages/verify-client; Workforce agent told to apply the same fix",
+        "low": "events TOCTOU closed; evidence links still reusable within their 5 minutes (accepted, audited)"
+      },
+      "tests_adopted": "tests/test_verifier2_*.py (30)"
     }
   }
 }

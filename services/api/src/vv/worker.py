@@ -9,7 +9,7 @@ from __future__ import annotations
 import signal
 import time
 
-from vv import deletion, events, evidence, webhooks
+from vv import deletion, events, evidence, tombstones, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.log import log
@@ -26,6 +26,7 @@ class Worker:
         if settings.is_non_production:
             self.providers["dummy"] = DummyProvider(self.db, settings.dummy_provider_secret, settings.environment)
         self.store = evidence.make_store(settings)
+        self.tombstone_log = tombstones.make_log(settings)
         self.resolver = resolver
         self.transport = transport
 
@@ -35,6 +36,7 @@ class Worker:
             "evidence_expiry": lambda: evidence.expire(self.db, self.store),
             "expired": lambda: events.expire_sessions(self.db),
             "deletions": lambda: deletion.advance_deletions(self.db, self.providers, store=self.store),
+            "tombstone_export": lambda: deletion.export_tombstones(self.db, self.tombstone_log),
             "dispatched": lambda: webhooks.dispatch_outbox(self.db),
             "deliveries": lambda: webhooks.deliver_due(self.db, self.settings.data_key, self.resolver,
                                                        self.transport),

@@ -109,7 +109,7 @@ def test_rejected_override_returns_case_to_queue(client, worker, make_tenant, se
 def test_appeal_goes_to_different_reviewer_and_appends_revision(client, worker, make_tenant, settings, owner):
     t = make_tenant()
     view = _review_case(client, worker, t, settings)
-    r1, r2 = _reviewers(client.app, t)
+    r1, r2, r3 = _reviewers(client.app, t, 3)
     rev = next(i for i in r1.get("/console/reviews").json()["items"] if i["session_id"] == view["id"])
     lock = r1.post(f"/console/reviews/{rev['id']}/claim").json()["lock_version"]
     decided = r1.post(f"/console/reviews/{rev['id']}/decision", json={**_body(view), "lock_version": lock}).json()
@@ -129,10 +129,13 @@ def test_appeal_goes_to_different_reviewer_and_appends_revision(client, worker, 
                   json={"expected_revision": session["revision"], "outcome": "approved", "method": "evidence_review",
                         "reason": "Looks fine on review", "evidence_ids": [view["checks"][0]["id"]]})
     assert bad.status_code == 422  # cannot assert a pass the evidence contradicts
-    ok = r2.post(f"/console/appeals/{appeal['id']}/resolve",
-                 json={"expected_revision": session["revision"], "outcome": "approved",
-                       "method": "alternative_method", "reason": "Second ID checked in person",
-                       "evidence_ids": [view["checks"][0]["id"]]}).json()
+    proposed = r2.post(f"/console/appeals/{appeal['id']}/resolve",
+                       json={"expected_revision": session["revision"], "outcome": "approved",
+                             "method": "alternative_method", "reason": "Second ID checked in person",
+                             "evidence_ids": [view["checks"][0]["id"]]}).json()
+    assert proposed["appeal"]["status"] == "awaiting_second_review" and proposed["session"] is None
+    assert r2.post(f"/console/appeals/{appeal['id']}/second-review", json={"confirm": True}).status_code == 403
+    ok = r3.post(f"/console/appeals/{appeal['id']}/second-review", json={"confirm": True}).json()
     assert ok["appeal"]["status"] == "resolved"
     assert ok["session"]["state"] == "approved" and ok["session"]["revision"] == session["revision"] + 1
     revs = owner.execute("SELECT revision, outcome, supersedes_revision FROM decisions WHERE session_id = %s "
@@ -143,7 +146,7 @@ def test_appeal_goes_to_different_reviewer_and_appends_revision(client, worker, 
     assert [e["payload"]["state"] for e in events] == ["declined", "approved"]
     hold = owner.execute("SELECT appeal_hold_until FROM sessions WHERE id = %s", (view["id"],)).fetchone()
     assert hold["appeal_hold_until"] is not None
-    for c in (r1, r2):
+    for c in (r1, r2, r3):
         c.__exit__(None, None, None)
 
 
