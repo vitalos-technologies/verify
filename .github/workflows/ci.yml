@@ -93,3 +93,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "22", cache: npm, cache-dependency-path: packages/verify-client/package-lock.json }
       - run: npm ci && npx tsc --noEmit && npm test
+
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "1.9.8" }
+      - run: terraform fmt -check -recursive
+      - run: terraform -chdir=envs/staging init -backend=false -input=false
+      - run: terraform -chdir=envs/staging validate
+      - run: python3 -I policy_check.py

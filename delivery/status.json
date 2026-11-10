@@ -83,7 +83,12 @@
     },
     "M02-T04": {
       "status": "blocked",
-      "reason": "External: cloud account and approved budget needed (no infrastructure provisioned)."
+      "reason": "Owner: AWS accounts, state bucket, approved monthly cap and certificate needed before plan/apply.",
+      "done": [
+        "infra/terraform modules (network, database, evidence_storage, queues, observability, budget, compute) + envs/staging, validated in CI only",
+        "policy_check.py guard rails (13 checks)"
+      ],
+      "gap": "Never planned or applied. App S3 evidence store and SQS transport adapters not yet implemented (dev uses local sealed store and DB queues)."
     },
     "M03-T01": {
       "status": "implemented",
