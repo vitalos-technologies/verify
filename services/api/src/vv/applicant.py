@@ -203,12 +203,41 @@ class DummyMessenger:
     def __init__(self) -> None:
         self.last_code: dict[str, str] = {}
         self.last_sent: str | None = None
+        self.last_link: str | None = None
 
-    def send_code(self, conn, channel: str, destination_hash: str, code: str) -> None:
+    def send_code(self, conn, channel: str, destination_hash: str, code: str, address: str = "") -> None:
         conn.execute("INSERT INTO dummy_messages (id, channel, destination_hash, template) VALUES (%s,%s,%s,%s)",
                      (new_id("msg"), channel, destination_hash, "contact_code_v1"))
         self.last_code[destination_hash] = code
         self.last_sent = code
+
+    def send_link(self, conn, destination_hash: str, link: str, address: str = "") -> None:
+        conn.execute("INSERT INTO dummy_messages (id, channel, destination_hash, template) VALUES (%s,%s,%s,%s)",
+                     (new_id("msg"), "email", destination_hash, "magic_link_v1"))
+        self.last_link = link
+
+
+class SesMessenger:
+    """Production email via Amazon SES (eu-west-2). Never logs addresses, codes or links."""
+
+    def __init__(self, sender: str, client=None) -> None:
+        if client is None:
+            import boto3
+            client = boto3.client("sesv2", region_name="eu-west-2")
+        self.sender, self.ses = sender, client
+
+    def _send(self, address: str, subject: str, text: str) -> None:
+        self.ses.send_email(FromEmailAddress=self.sender, Destination={"ToAddresses": [address]},
+                            Content={"Simple": {"Subject": {"Data": subject},
+                                                "Body": {"Text": {"Data": text}}}})
+
+    def send_code(self, conn, channel: str, destination_hash: str, code: str, address: str = "") -> None:
+        self._send(address, "Your verification code", f"Your code is {code}. It expires in 10 minutes.")
+
+    def send_link(self, conn, destination_hash: str, link: str, address: str = "") -> None:
+        self._send(address, "Sign in to Vitalos Verify",
+                   f"Open this link in the same browser to sign in. It expires in 15 minutes.\n\n{link}\n\n"
+                   "If you did not ask for this, ignore this email.")
 
 
 GENERIC_SENT = {"status": "sent_if_valid",
@@ -272,7 +301,7 @@ def send_contact_code(db: Database, ctx: ApplicantContext, pepper: bytes, messen
         conn.execute("INSERT INTO usage_events (tenant_id, id, session_id, ledger_key, charge_type, amount_minor) "
                      "VALUES (%s,%s,%s,%s,'message',%s)",
                      (ctx.tenant_id, new_id("use"), ctx.session_id, f"msg:{challenge_id}", MESSAGE_COST_MINOR))
-        messenger.send_code(conn, channel, dest_hash, code)
+        messenger.send_code(conn, channel, dest_hash, code, dest)
     return GENERIC_SENT
 
 

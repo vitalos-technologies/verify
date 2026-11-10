@@ -7,7 +7,7 @@ export VV_ENV=test VV_DEV_EXPOSE_CODES=1
 export VV_OWNER_DSN="${VV_E2E_OWNER_DSN:-postgresql://vv_owner:vv_owner_local@localhost:5432/vv_e2e}"
 export VV_APP_DSN="${VV_E2E_APP_DSN:-postgresql://vv_app:vv_app_local@localhost:5432/vv_e2e}"
 export VV_WORKER_DSN="${VV_E2E_WORKER_DSN:-postgresql://vv_worker:vv_worker_local@localhost:5432/vv_e2e}"
-export VV_HOSTED_BASE_URL="http://localhost:3100"
+export VV_HOSTED_BASE_URL="http://localhost:3100" VV_CONSOLE_BASE_URL="http://localhost:3100"
 cd "$api"
 psql "$VV_OWNER_DSN" -q -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
 uv run -q vv-admin migrate >/dev/null

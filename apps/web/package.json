@@ -8,7 +8,7 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test --trace off",
-    "build:e2e": "VV_API_ORIGIN=http://localhost:8100 VV_ENABLE_DUMMY_PROVIDER=1 next build"
+    "build:e2e": "VV_API_ORIGIN=http://localhost:8100 VV_ENABLE_DUMMY_PROVIDER=1 NEXT_PUBLIC_DEV_LOGIN=1 next build"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

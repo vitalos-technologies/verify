@@ -105,15 +105,12 @@ def test_sign_in_with_mfa_creates_session(oidc_app, idp, make_tenant, owner):
     assert s == {"auth_method": "oidc", "amr": ["pwd", "otp"]}
 
 
-@pytest.mark.parametrize("case", ["no_mfa", "wrong_nonce", "wrong_aud", "wrong_iss", "expired", "bad_key",
-                                  "unknown_kid"])
+@pytest.mark.parametrize("case", ["wrong_nonce", "wrong_aud", "wrong_iss", "expired", "bad_key", "unknown_kid"])
 def test_rejected_tokens(oidc_app, idp, make_tenant, case):
     t = make_tenant()
     _member(t, f"bob-{case}")
     kwargs: dict = {}
-    if case == "no_mfa":
-        kwargs["amr"] = ("pwd",)
-    elif case == "wrong_nonce":
+    if case == "wrong_nonce":
         kwargs["mutate"] = lambda c: c.update(nonce="attacker")
     elif case == "wrong_aud":
         kwargs["mutate"] = lambda c: c.update(aud="other-client")
@@ -181,3 +178,13 @@ def test_amr_rules():
         assert not oidc.has_mfa({"amr": single}), single
     assert not oidc.has_mfa({}) and not oidc.has_mfa({"amr": "mfa"})
     json.dumps(oidc.describe({"iss": ISS, "amr": ["mfa"]}))
+
+
+def test_without_idp_mfa_requires_authenticator_code(oidc_app, idp, make_tenant):
+    t = make_tenant()
+    _member(t, "no-mfa-user")
+    with TestClient(oidc_app) as c:
+        r, _ = _sign_in(c, idp, "no-mfa-user", amr=("pwd",))
+        assert r.status_code == 302 and r.headers["location"].endswith("/app/mfa")
+        assert c.get("/console/me").status_code == 401  # no console session yet
+        assert c.get("/console/mfa/status").json()["enrolled"] is False

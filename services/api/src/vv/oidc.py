@@ -133,8 +133,6 @@ def finish(db, client: OidcClient, data_key: bytes, code: str, state: str, bindi
         raise ApiError(401, "sign_in_failed", "Sign-in expired. Please try again.")
     verifier = crypto.unseal(data_key, bytes(row["verifier_sealed"]), b"oidc").decode()
     claims = client.verify(client.exchange(code, verifier), row["nonce"])
-    if not has_mfa(claims):
-        raise ApiError(403, "mfa_required", "Sign in with multi-factor authentication.")
     auth_time = claims.get("auth_time")
     if isinstance(auth_time, int | float):
         auth_time = int(auth_time)
@@ -144,8 +142,11 @@ def finish(db, client: OidcClient, data_key: bytes, code: str, state: str, bindi
             raise ApiError(401, "reauth_required", "Please sign in again.")  # IdP ignored prompt=login
     else:
         auth_time = 0  # unknown: sign-in allowed, but step-up is never satisfied without auth_time (D-I)
-    return {"subject": f"{claims['iss']}|{claims['sub']}", "claims": claims, "tenant_hint": row["tenant_hint"],
-            "amr": [str(a) for a in claims.get("amr", [])], "auth_time": auth_time}
+    subjects = [f"{claims['iss']}|{claims['sub']}"]
+    if claims.get("email_verified") is True and isinstance(claims.get("email"), str):
+        subjects.append("email|" + claims["email"].strip().lower())  # Google: verified address only
+    return {"subject": subjects[0], "subjects": subjects, "claims": claims, "tenant_hint": row["tenant_hint"],
+            "amr": [str(a) for a in claims.get("amr", [])], "auth_time": auth_time, "idp_mfa": has_mfa(claims)}
 
 
 def describe(claims: dict) -> str:

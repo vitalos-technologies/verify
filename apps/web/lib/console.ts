@@ -10,7 +10,12 @@ function csrf(): string {
   return m ? decodeURIComponent(m[1]) : "";
 }
 
-export async function con<T>(path: string, body?: unknown, method?: string): Promise<T> {
+type StepUp = () => Promise<boolean>;
+let stepUpHandler: StepUp | null = null;
+/** The workspace layout registers a dialog that asks for an authenticator code (step-up). */
+export function onStepUp(fn: StepUp | null) { stepUpHandler = fn; }
+
+export async function con<T>(path: string, body?: unknown, method?: string, retried = false): Promise<T> {
   const m = method ?? (body === undefined ? "GET" : "POST");
   const res = await fetch(`/console${path}`, {
     method: m,
@@ -20,7 +25,11 @@ export async function con<T>(path: string, body?: unknown, method?: string): Pro
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/dev-login")) window.location.assign("/app/login");
+  if (res.status === 401 && data.code === "step_up_required" && !retried && stepUpHandler) {
+    if (await stepUpHandler()) return con<T>(path, body, method, true);
+  }
+  const publicPath = ["/dev-login", "/magic", "/mfa"].some((p) => path.startsWith(p));
+  if (res.status === 401 && data.code !== "step_up_required" && typeof window !== "undefined" && !publicPath) window.location.assign("/app/login");
   if (!res.ok) throw new ApiFailure(res.status, data.code ?? "error", data.message ?? "Something went wrong.");
   return data as T;
 }

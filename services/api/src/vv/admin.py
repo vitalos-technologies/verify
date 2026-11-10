@@ -56,7 +56,7 @@ def seed_dev(dsn: str) -> dict:
     coverage = CoverageRegistry.load(settings.coverage_path)
     with owner_conn(dsn) as conn:
         tid = create_tenant(conn, "Synthetic Recruitment Ltd (demo)")
-        add_member(conn, tid, "owner@synthetic.example", "owner")
+        add_member(conn, tid, "email|owner@synthetic.example", "owner")
         conn.execute("SELECT set_config('app.tenant_id', %s, true)", (tid,))
         service.create_policy_draft(conn, tid, DEV_POLICY)
         service.publish_policy(conn, tid, DEV_POLICY["id"], 1, coverage, settings.session_price_minor)
@@ -66,9 +66,63 @@ def seed_dev(dsn: str) -> dict:
         conn.execute("INSERT INTO platform_operators (id, subject, display_name, role) VALUES "
                      "('pop_dev_admin', 'platform-admin@synthetic.example', 'Platform Admin', 'platform_admin'), "
                      "('pop_dev_ops', 'ops@synthetic.example', 'Operations', 'operations') ON CONFLICT DO NOTHING")
-    return {"tenant_id": tid, "owner_subject": "owner@synthetic.example", "api_key": raw,
+    return {"tenant_id": tid, "owner_subject": "email|owner@synthetic.example",
+            "owner_email": "owner@synthetic.example", "api_key": raw,
             "platform_admin_subject": "platform-admin@synthetic.example",
             "note": "Synthetic development tenant. The API key is shown once."}
+
+
+DEMO_CASES = [  # (reference, scenario or None for "sent, not started")
+    ("NR-1041", "all_pass"), ("NR-1042", "all_pass"), ("NR-1043", "liveness_inconclusive"),
+    ("NR-1044", "all_pass"), ("NR-1045", "face_no_match"), ("NR-1046", "all_pass"), ("NR-1047", "low_quality"),
+    ("NR-1048", "liveness_inconclusive"), ("NR-1049", "all_pass"), ("NR-1050", None), ("NR-1051", "all_pass"),
+    ("NR-1052", None), ("NR-1053", "document_expired"), ("NR-1054", "all_pass"),
+]
+
+
+def seed_demo(dsn: str) -> dict:
+    """Synthetic demo tenant driven through the real API and worker (dummy provider; no real data)."""
+    from fastapi.testclient import TestClient
+
+    from vv.api.app import create_app
+    from vv.worker import Worker
+
+    settings = load_settings()
+    if not settings.is_non_production:
+        raise SystemExit("seed-demo is only available in development/test/ci")
+    coverage = CoverageRegistry.load(settings.coverage_path)
+    with owner_conn(dsn) as conn:
+        tid = create_tenant(conn, "Northstar Recruitment (demo)", monthly_cap=500)
+        add_member(conn, tid, "email|demo.owner@northstar.example", "owner")
+        add_member(conn, tid, "email|demo.reviewer@northstar.example", "reviewer")
+        conn.execute("SELECT set_config('app.tenant_id', %s, true)", (tid,))
+        service.create_policy_draft(conn, tid, DEV_POLICY)
+        service.publish_policy(conn, tid, DEV_POLICY["id"], 1, coverage, settings.session_price_minor)
+        _, key = auth.create_api_key(conn, settings.hmac_pepper, settings.environment, tid, sorted(auth.API_SCOPES),
+                                     "demo", "vv-admin")
+    app = create_app(settings)
+    worker = Worker(settings)
+    hdr = {"Authorization": f"Bearer {key}"}
+    for i, (ref, scenario) in enumerate(DEMO_CASES):
+        with TestClient(app) as c:
+            r = c.post("/v1/verifications", headers={**hdr, "Idempotency-Key": f"demo-seed-{tid}-{i:03d}"},
+                       json={"external_reference": ref, "policy_id": "workforce_identity", "policy_version": 1,
+                             "country": "ZZ", "document_type": "passport" if i % 3 else "driving_licence"})
+            if scenario is None:
+                continue
+            c.post("/applicant/exchange", json={"token": r.json()["hosted_url"].rsplit("/", 1)[1]})
+            c.post("/applicant/notice", json={"notice_version": "notice-synthetic-1"})
+            c.post("/applicant/contact/send", json={"channel": "email", "destination": f"{ref.lower()}@demo.example"})
+            c.post("/applicant/contact/verify", json={"code": app.state.vv.messenger.last_sent})
+            att = c.post("/applicant/attempts").json()
+            c.post("/dummy-provider/capture", json={"capture_token": att["capture_token"], "scenario": scenario})
+            c.post(f"/applicant/attempts/{att['attempt_id']}/submitted")
+        for _ in range(3):
+            worker.run_once()
+    worker.close()
+    return {"tenant_id": tid, "owner_email": "demo.owner@northstar.example",
+            "reviewer_email": "demo.reviewer@northstar.example", "api_key": key, "cases": len(DEMO_CASES),
+            "note": "Synthetic demo data only. The API key is shown once."}
 
 
 def main() -> None:
@@ -79,10 +133,18 @@ def main() -> None:
     roles.add_argument("--app-password", default=os.environ.get("VV_APP_PASSWORD", "vv_app_local"))
     roles.add_argument("--worker-password", default=os.environ.get("VV_WORKER_PASSWORD", "vv_worker_local"))
     sub.add_parser("seed-dev")
+    sub.add_parser("seed-demo", help="Synthetic 'Northstar Recruitment (demo)' tenant with cases in every state")
     sub.add_parser("replay-tombstones", help="Re-apply all deletions after a backup restore (run before serving)")
     rex = sub.add_parser("recovery-exercise", help="Restore into an isolated copy, verify, measure, destroy")
     rex.add_argument("--report-dir", default="../../docs/evidence/recovery")
     args = parser.parse_args()
+    import logging
+    import sys
+
+    import vv.log  # noqa: F401 - create the handler now, then point it at stderr
+    for h in logging.getLogger("vv").handlers:  # keep stdout clean for JSON output
+        if isinstance(h, logging.StreamHandler):
+            h.setStream(sys.stderr)
     dsn = os.environ.get("VV_OWNER_DSN")
     if not dsn:
         raise SystemExit("VV_OWNER_DSN is required")
@@ -113,5 +175,7 @@ def main() -> None:
         path.write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps({"passed": report["passed"], "report": str(path),
                           "rto_seconds": report["measured_rto_seconds"]}))
+    elif args.cmd == "seed-demo":
+        print(json.dumps(seed_demo(dsn), indent=2))
     elif args.cmd == "seed-dev":
         print(json.dumps(seed_dev(dsn), indent=2))

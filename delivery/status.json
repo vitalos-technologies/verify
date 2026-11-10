@@ -62,16 +62,21 @@
         "services/api/src/vv/oidc.py",
         "services/api/migrations/0008_oidc.sql",
         "services/api/tests/test_oidc.py",
-        "services/api/tests/test_at02_revocation.py"
+        "services/api/tests/test_at02_revocation.py",
+        "services/api/src/vv/signin.py",
+        "services/api/migrations/0011_signin.sql",
+        "services/api/tests/test_signin.py",
+        "apps/web/e2e/console-signin.spec.ts"
       ],
       "done": [
         "OIDC code flow + PKCE S256, one-use state, nonce",
         "ID token verified via JWKS (sig, iss, aud, exp, kid rotation)",
         "MFA required for all console roles (amr, RFC 8176)",
         "step-up (15 min) for API keys, membership revocation, evidence reveal",
-        "membership roles, scoped hashed API keys, revocation, CSRF double-submit"
+        "membership roles, scoped hashed API keys, revocation, CSRF double-submit",
+        "Owner-chosen sign-in: Google (OIDC, verified email) or email magic link (one-use, 15 min, browser-bound), then TOTP authenticator (RFC 6238, replay-protected, 5-attempt lockout); step-up by code; SES email adapter"
       ],
-      "gap": "Tested against a fake IdP only; no real IdP tenant configured (Cognito proposed, M01 decision). Invitation/binding of pending members by verified email not built (members added by subject via CLI)."
+      "gap": "Needs owner: Google OAuth client (ID/secret), SES verified sender domain, platform-staff sign-in still dev-only."
     },
     "M02-T03": {
       "status": "implemented",
@@ -296,7 +301,8 @@
       "ADR-022 accepted",
       "Evidence retention 30 days approved",
       "Backup retention 35 days approved",
-      "Book a demo links to https://vitalos.co.uk"
+      "Book a demo links to https://vitalos.co.uk",
+      "Sign-in: Google and email magic link (implemented with required authenticator app)"
     ]
   }
 }

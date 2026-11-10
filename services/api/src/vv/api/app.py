@@ -18,7 +18,7 @@ from fastapi.responses import Response as RawResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, billing, deletion, events, evidence, oidc, platform, review, service, webhooks
+from vv import auth, billing, crypto, deletion, events, evidence, oidc, platform, review, service, signin, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -109,6 +109,15 @@ class RevealRequest(Strict):
     reason: str = Field(min_length=10, max_length=500)
 
 
+class MagicStart(Strict):
+    email: str = Field(max_length=254)
+    tenant: str | None = Field(default=None, max_length=64)
+
+
+class CodeBody(Strict):
+    code: str = Field(min_length=6, max_length=6)
+
+
 class LegalHoldRequest(Strict):
     subject_id: str
     owner: str = Field(min_length=3, max_length=200)
@@ -176,7 +185,8 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
     if settings.is_non_production:
         providers["dummy"] = DummyProvider(db, settings.dummy_provider_secret, settings.environment)
     state = AppState(settings, db, CoverageRegistry.load(settings.coverage_path), providers,
-                     ap.DummyMessenger() if settings.is_non_production else None,
+                     ap.DummyMessenger() if settings.is_non_production
+                     else (ap.SesMessenger(os.environ["VV_EMAIL_FROM"]) if os.environ.get("VV_EMAIL_FROM") else None),
                      resolver or webhooks.default_resolver,
                      evidence.make_store(settings))
     app = FastAPI(title="Vitalos Verify API (prototype)", version="0.1.0", docs_url=None, redoc_url=None,
@@ -417,30 +427,124 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                             secure=not settings.is_non_production or settings.hosted_base_url.startswith("https"))
         return response
 
+    def resolve_member(subjects: list[str], tenant_hint: str | None) -> dict:
+        with db.system_tx() as conn:
+            seen: dict[str, dict] = {}
+            for subj in subjects:
+                for m in conn.execute("SELECT * FROM vv_memberships_for_subject(%s)", (subj,)):
+                    seen.setdefault(m["tenant_id"], m)
+        members = [m for m in seen.values() if not tenant_hint or m["tenant_id"] == tenant_hint]
+        if len(members) != 1:
+            raise ApiError(403, "no_membership" if not members else "choose_organisation",
+                           "No access to this organisation." if not members else "Choose an organisation to sign in.")
+        return members[0]
+
+    def open_session(response: Response, m: dict, method: str, amr: list[str], auth_time: int | None) -> None:
+        with db.tenant_tx(m["tenant_id"]) as conn:
+            token, csrf_token = auth.create_console_session(
+                conn, m["tenant_id"], m["id"], settings.console_absolute_seconds, auth_method=method,
+                amr=amr, auth_time=auth_time)
+            service.audit(conn, m["tenant_id"], "console", m["id"], "console.sign_in", "membership", m["id"],
+                          reason=method)
+        set_console_cookies(response, token, csrf_token)
+
+    def to_second_factor(subjects: list[str], first_factor: str, tenant_hint: str | None) -> RedirectResponse:
+        resolve_member(subjects, tenant_hint)  # fail early: no pending login for people without access
+        with db.system_tx() as conn:
+            pending = signin.create_pending(conn, subjects, first_factor, tenant_hint)
+        response = RedirectResponse(settings.console_base_url.rstrip("/") + "/app/mfa", status_code=302)
+        set_cookie(response, "vv_pending", pending, "/console", signin.PENDING_TTL)
+        return response
+
     @app.get("/console/oidc/callback")
     def oidc_callback(request: Request, code: str = "", state: str = ""):
         if oidc_client is None:
             raise ApiError(404, "not_found", "Resource not found.")
         result = oidc.finish(db, oidc_client, settings.data_key, code, state, request.cookies.get("vv_oidc"))
-        with db.system_tx() as conn:
-            members = list(conn.execute("SELECT * FROM vv_memberships_for_subject(%s)", (result["subject"],)))
-        if result["tenant_hint"]:
-            members = [m for m in members if m["tenant_id"] == result["tenant_hint"]]
-        if len(members) != 1:
-            # No silent binding by email; one subject in several organisations must pick one.
-            raise ApiError(403, "no_membership" if not members else "choose_organisation",
-                           "No access to this organisation." if not members else "Choose an organisation to sign in.")
-        m = members[0]
-        with db.tenant_tx(m["tenant_id"]) as conn:
-            token, csrf_token = auth.create_console_session(
-                conn, m["tenant_id"], m["id"], settings.console_absolute_seconds, auth_method="oidc",
-                amr=result["amr"], auth_time=result["auth_time"])
-            service.audit(conn, m["tenant_id"], "console", m["id"], "console.sign_in", "membership", m["id"],
-                          reason="oidc+mfa")
-        response = RedirectResponse(settings.console_base_url.rstrip("/") + "/app", status_code=302)
-        set_console_cookies(response, token, csrf_token)
+        if not result["idp_mfa"]:
+            # Google and most IdPs do not assert a second factor: require our authenticator code.
+            first = "google" if result["claims"]["iss"] in ("https://accounts.google.com", "accounts.google.com") \
+                else "oidc"
+            response = to_second_factor(result["subjects"], first, result["tenant_hint"])
+        else:
+            m = resolve_member(result["subjects"], result["tenant_hint"])
+            response = RedirectResponse(settings.console_base_url.rstrip("/") + "/app", status_code=302)
+            open_session(response, m, "oidc", result["amr"], result["auth_time"])
         response.delete_cookie("vv_oidc", path="/console/oidc")
         return response
+
+    # Email magic link (first factor). Always the same answer, so addresses cannot be enumerated.
+    @app.post("/console/magic/start")
+    def magic_start(request: Request, body: MagicStart, response: Response):
+        if state.messenger is None:
+            raise ApiError(503, "email_unavailable", "Email sign-in is not available. Use Google.")
+        _rate_limit(db, f"magic:{request.client.host if request.client else '-'}", 20)
+        with db.system_tx() as conn:
+            token, binding = signin.start_magic(conn, settings.data_key, body.email, body.tenant)
+            if token:
+                link = f"{settings.console_base_url.rstrip('/')}/console/magic/callback?token={token}"
+                state.messenger.send_link(conn, crypto.keyed_hash(settings.hmac_pepper, "magic", body.email.lower()),
+                                          link, body.email.strip().lower())
+        response.set_cookie("vv_magic", binding, max_age=signin.MAGIC_TTL, path="/console/magic", httponly=True,
+                            samesite="lax",
+                            secure=not settings.is_non_production or settings.hosted_base_url.startswith("https"))
+        return {"status": "sent_if_valid"}
+
+    @app.get("/console/magic/callback")
+    def magic_callback(request: Request, token: str = ""):
+        with db.system_tx() as conn:
+            first = signin.finish_magic(conn, token, request.cookies.get("vv_magic"))
+        response = to_second_factor(first["subjects"], "email", first["tenant_hint"])
+        response.delete_cookie("vv_magic", path="/console/magic")
+        return response
+
+    # Second factor: authenticator app (TOTP).
+    @app.get("/console/mfa/status")
+    def mfa_status(request: Request):
+        with db.system_tx() as conn:
+            p = signin.load_pending(conn, request.cookies.get("vv_pending"))
+            subject = signin.mfa_subject(list(p["subjects"]))
+            return {"enrolled": signin.is_enrolled(conn, subject), "first_factor": p["first_factor"],
+                    "account": subject.split("|", 1)[1]}
+
+    @app.post("/console/mfa/enroll")
+    def mfa_enroll(request: Request):
+        with db.system_tx() as conn:
+            p = signin.load_pending(conn, request.cookies.get("vv_pending"))
+            return signin.enrolment(conn, settings.data_key, signin.mfa_subject(list(p["subjects"])))
+
+    @app.post("/console/mfa/verify")
+    def mfa_verify(request: Request, body: CodeBody):
+        with db.system_tx() as conn:
+            p = signin.load_pending(conn, request.cookies.get("vv_pending"), lock=True)
+            subject = signin.mfa_subject(list(p["subjects"]))
+            if not signin.check_code(conn, settings.data_key, subject, body.code):
+                conn.execute("UPDATE login_pending SET failed = failed + 1 WHERE token_hash = %s", (p["token_hash"],))
+                ok = False
+            else:
+                conn.execute("UPDATE login_pending SET used_at = now() WHERE token_hash = %s", (p["token_hash"],))
+                ok = True
+        if not ok:
+            raise ApiError(400, "code_invalid", "That code is not right. Try the current code.")
+        m = resolve_member(list(p["subjects"]), p["tenant_hint"])
+        response = JSONResponse({"redirect": "/app"})
+        open_session(response, m, f"{p['first_factor']}+totp", [p["first_factor"], "otp"], int(time.time()))
+        response.delete_cookie("vv_pending", path="/console")
+        return response
+
+    @app.post("/console/mfa/step-up")
+    def mfa_step_up(request: Request, body: CodeBody, principal: Console):
+        with db.system_tx() as conn:
+            row = conn.execute("SELECT * FROM vv_lookup_console_session(%s)",
+                               (crypto.token_hash(request.cookies.get(CONSOLE_COOKIE) or ""),)).fetchone()
+            subject = row["user_subject"]
+            ok = signin.check_code(conn, settings.data_key, subject, body.code)
+        if not ok:
+            raise ApiError(400, "code_invalid", "That code is not right. Try the current code.")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            conn.execute("UPDATE console_sessions SET auth_time = now() WHERE tenant_id = %s AND id = %s",
+                         (principal.tenant_id, principal.console_session_id))
+        return {"status": "ok"}
 
     @app.post("/console/api-keys")
     def console_create_key(request: Request, principal: Console, body: ApiKeyCreate):
@@ -761,6 +865,11 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             def dev_last_code():
                 """DEV/E2E ONLY (VV_DEV_EXPOSE_CODES=1, non-production): read the dummy messenger's last code."""
                 return {"code": state.messenger.last_sent}
+
+            @app.get("/dev/last-magic-link")
+            def dev_last_link():
+                """DEV/E2E ONLY: the dummy messenger's last sign-in link."""
+                return {"link": state.messenger.last_link}
 
         @app.post("/platform/dev-login")
         def platform_dev_login(body: DevLogin, response: Response):

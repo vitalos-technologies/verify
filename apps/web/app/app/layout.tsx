@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { Shell } from "@/components/ui";
+import StepUpDialog from "./StepUpDialog";
 import { con } from "@/lib/console";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -15,11 +16,11 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [queue, setQueue] = useState(0);
   const [q, setQ] = useState(params.get("q") ?? "");
   useEffect(() => {
-    if (path === "/app/login") return;
+    if (path === "/app/login" || path === "/app/mfa") return;
     con<typeof me>("/me").then(setMe).catch(() => {});
     con<{ review_queue: number }>("/stats").then((s) => setQueue(s.review_queue)).catch(() => {});
   }, [path]);
-  if (path === "/app/login") return <>{children}</>;
+  if (path === "/app/login" || path === "/app/mfa") return <>{children}</>;
   const nav = [
     { href: "/app", label: "Verifications", icon: ShieldCheck },
     { href: "/app/reviews", label: "Review queue", icon: ClipboardList, badge: queue },
@@ -38,6 +39,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </form>
       ) : null}>
       {children}
+      <StepUpDialog />
     </Shell>
   );
 }
