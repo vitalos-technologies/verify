@@ -106,7 +106,7 @@ def test_served_evidence_headers(client, worker, make_tenant, settings):
 def test_export_formula_injection_and_minimisation(client, worker, make_tenant, settings):
     t = make_tenant()
     refs = ["=HYPERLINK(\"http://x\")", "+1+1", "-2", "@SUM(A1)", "\t=1", " =1+1", "\n=1+1", "＝1+1"]
-    for i, r in enumerate(refs):
+    for _i, r in enumerate(refs):
         create_session(client, t, ref=r)
     _case(client, worker, t, settings, ref="v2-export-ok")
     a = _browser(client.app, t.id, t.owner_subject)
