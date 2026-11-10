@@ -11,28 +11,56 @@
   },
   "tasks": {
     "M00-T01": {
-      "status": "blocked",
-      "reason": "External: founder to run 10 buyer/reviewer interviews."
+      "status": "in_progress",
+      "evidence": [
+        "docs/commercial/interview-kit.md",
+        "docs/commercial/demo-script.md",
+        "docs/commercial/pilot-intent-letter.md",
+        "vv-admin seed-demo (Northstar Recruitment demo tenant)"
+      ],
+      "gap": "Owner runs interviews/demos and obtains signed pilot intents; kit and demo environment are ready."
     },
     "M00-T02": {
-      "status": "blocked",
-      "reason": "External: depends on M00-T01 evidence."
+      "status": "in_progress",
+      "evidence": [
+        "docs/commercial/interview-kit.md",
+        "docs/commercial/demo-script.md",
+        "docs/commercial/pilot-intent-letter.md",
+        "vv-admin seed-demo (Northstar Recruitment demo tenant)"
+      ],
+      "gap": "Owner runs interviews/demos and obtains signed pilot intents; kit and demo environment are ready."
     },
     "M00-T03": {
-      "status": "blocked",
-      "reason": "External: three written pilot intents needed."
+      "status": "in_progress",
+      "evidence": [
+        "docs/commercial/interview-kit.md",
+        "docs/commercial/demo-script.md",
+        "docs/commercial/pilot-intent-letter.md",
+        "vv-admin seed-demo (Northstar Recruitment demo tenant)"
+      ],
+      "gap": "Owner runs interviews/demos and obtains signed pilot intents; kit and demo environment are ready."
     },
     "M00-T04": {
       "status": "blocked",
-      "reason": "External: named owners and approved spending cap needed."
+      "evidence": [
+        "docs/commercial/pilot-plan.md"
+      ],
+      "reason": "Proposed \u00a3750/month non-labour cap awaits owner approval."
     },
     "M01-T01": {
-      "status": "blocked",
-      "reason": "External: supplier RFI/quotes (Stripe Identity, Regula, Innovatrics, Yoti shortlisted; none contacted)."
+      "status": "in_progress",
+      "evidence": [
+        "docs/procurement/supplier-scorecard.md (desk research, 10 Nov 2026)"
+      ],
+      "recommendation": "Primary Regula (self-hosted in our eu-west-2 account), fallback Innovatrics; Yoti/Stripe only with written changes to terms",
+      "gap": "Supplier answers to RFIs; owner sends the RFIs (docs/procurement/rfi-email-drafts.md)."
     },
     "M01-T02": {
-      "status": "blocked",
-      "reason": "External: contract, DPA and region review."
+      "status": "in_progress",
+      "evidence": [
+        "docs/procurement/supplier-agreement-draft.md (owner-approved negotiation baseline, not signed)"
+      ],
+      "gap": "Solicitor review and negotiation with the selected supplier."
     },
     "M01-T03": {
       "status": "implemented",
@@ -91,7 +119,8 @@
       "reason": "Owner: AWS accounts, state bucket, approved monthly cap and certificate needed before plan/apply.",
       "done": [
         "infra/terraform modules (network, database, evidence_storage, queues, observability, budget, compute) + envs/staging, validated in CI only",
-        "policy_check.py guard rails (13 checks)"
+        "policy_check.py guard rails (13 checks)",
+        "docs/infrastructure/aws-setup.md + infra/terraform/bootstrap (state bucket, lock table, GitHub OIDC plan role); tombstone bucket with object lock; evidence/tombstone env wired"
       ],
       "gap": "Never planned or applied. App S3 evidence store and SQS transport adapters not yet implemented (dev uses local sealed store and DB queues)."
     },
@@ -129,7 +158,8 @@
     "M03-T04": {
       "status": "in_progress",
       "evidence": [
-        "apps/web/e2e/applicant.spec.ts (8 tests: 390px and 320px, keyboard-only activation, focus moves to step heading, live-region announcements, axe WCAG 2.0/2.1/2.2 A/AA scan at each step, camera denied, invalid link, refresh)"
+        "apps/web/e2e/applicant.spec.ts (8 tests: 390px and 320px, keyboard-only activation, focus moves to step heading, live-region announcements, axe WCAG 2.0/2.1/2.2 A/AA scan at each step, camera denied, invalid link, refresh)",
+        "docs/compliance/accessibility-test-pack.md (manual AT test pack)"
       ],
       "gap": "Automated checks only. Real screen-reader (VoiceOver/TalkBack), iOS Safari, Android Chrome, low-memory Android and 200% zoom manual tests not run."
     },
@@ -238,6 +268,21 @@
         "vitalos-technologies/workforce#401 (T081, ADR-022 accepted)"
       ],
       "gap": "Awaiting Workforce CI and P4 verifier; owner sets VERIFY_* secrets and registers the webhook after merge."
+    },
+    "M05-T03": {
+      "status": "in_progress",
+      "evidence": [
+        "docs/compliance/security-test-brief.md",
+        "vv-security-smoke (services/api/src/vv/security_smoke.py)"
+      ],
+      "gap": "Independent penetration test against staging (firm, budget, dates)."
+    },
+    "M05-T04": {
+      "status": "in_progress",
+      "evidence": [
+        "docs/compliance/DPIA.md (pre-filled draft)"
+      ],
+      "gap": "Owner/adviser completes blanks; each customer completes Part B and signs."
     }
   },
   "acceptance_scenarios": {
@@ -302,7 +347,8 @@
       "Evidence retention 30 days approved",
       "Backup retention 35 days approved",
       "Book a demo links to https://vitalos.co.uk",
-      "Sign-in: Google and email magic link (implemented with required authenticator app)"
+      "Sign-in: Google and email magic link (implemented with required authenticator app)",
+      "Supplier agreement draft approved as negotiation baseline (not signed; solicitor review required)"
     ]
   }
 }

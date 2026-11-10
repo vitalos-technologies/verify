@@ -9,6 +9,9 @@ variable "api_image" { type = string }
 variable "web_image" { type = string }
 variable "evidence_bucket_arn" { type = string }
 variable "evidence_kms_key_arn" { type = string }
+variable "evidence_bucket_name" { type = string }
+variable "tombstone_bucket_arn" { type = string }
+variable "tombstone_bucket_name" { type = string }
 variable "queue_arns" { type = list(string) }
 variable "secret_arns" { type = list(string) }
 variable "log_group_names" { type = map(string) }
@@ -152,6 +155,8 @@ resource "aws_iam_role_policy" "runtime" {
     Statement = [
       { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], Resource = "${var.evidence_bucket_arn}/*" },
       { Effect = "Allow", Action = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"], Resource = var.evidence_kms_key_arn },
+      { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject"], Resource = "${var.tombstone_bucket_arn}/tombstones/*" },
+      { Effect = "Allow", Action = ["s3:ListBucket"], Resource = var.tombstone_bucket_arn },
       { Effect = "Allow", Action = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = var.queue_arns },
     ]
   })
@@ -180,7 +185,12 @@ resource "aws_ecs_task_definition" "this" {
     essential              = true
     readonlyRootFilesystem = true
     portMappings           = each.value.port == null ? [] : [{ containerPort = each.value.port }]
-    environment            = [{ name = "VV_ENV", value = "staging" }]
+    environment = [
+      { name = "VV_ENV", value = "staging" },
+      { name = "VV_EVIDENCE_BUCKET", value = var.evidence_bucket_name },
+      { name = "VV_EVIDENCE_KMS_KEY_ID", value = var.evidence_kms_key_arn },
+      { name = "VV_TOMBSTONE_BUCKET", value = var.tombstone_bucket_name },
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {

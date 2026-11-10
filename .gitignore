@@ -10,3 +10,8 @@ evidence/private/
 *.local.json
 .evidence-local/
 .tombstones-local/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/

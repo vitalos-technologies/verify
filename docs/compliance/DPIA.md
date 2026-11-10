@@ -134,7 +134,7 @@ Help a requesting business establish that an applicant is the genuine holder of 
 | Deletion lifecycle with tombstones outside backups | `deletion.py`, `tombstones.py` | `tests/test_at09_deletion.py`, `test_verifier2_deletion.py` |
 | Mocks refused outside dev/test | `config.py` | `tests/test_verifier_ssrf_env.py::test_staging_refuses_mocks` |
 
-Not yet done (must be done before real data): real supplier integration and its contract tests; deployment to AWS; S3 evidence and tombstone buckets created; independent penetration test (`docs/compliance/security-test-brief.md`); manual accessibility testing (`docs/compliance/accessibility-test-pack.md`); CSP nonces (inline scripts still allowed); live sign-in configuration (Google or email magic link plus authenticator-app TOTP — owner decision 10 Nov 2026; code in progress in `signin.py`, migration `0011_signin.sql`, `tests/test_signin.py`, not yet merged or tested against a real Google tenant or mail sender).
+Not yet done (must be done before real data): real supplier integration and its contract tests; deployment to AWS; S3 evidence and tombstone buckets created; independent penetration test (`docs/compliance/security-test-brief.md`); manual accessibility testing (`docs/compliance/accessibility-test-pack.md`); CSP nonces (inline scripts still allowed); live sign-in configuration (Google or email magic link plus authenticator-app TOTP — owner decision 10 Nov 2026; built and tested in `signin.py`, migration `0011_signin.sql`, `tests/test_signin.py`, but not yet configured against a real Google OAuth client or SES sender).
 
 ## A5. Necessity and proportionality — processor view (ICO step 4, part)
 
@@ -319,7 +319,7 @@ Blank = not signed. No real applicant may be invited until this part is signed.
 
 | Processing | Data | Lawful basis (to confirm with adviser) | Retention |
 |---|---|---|---|
-| Console accounts and sign-in (Google or email magic link + authenticator-app second factor — owner decision; build in progress) | Name, work email, sign-in subject, MFA evidence, session records | [Owner to complete] | [Owner to complete] |
+| Console accounts and sign-in (Google or email magic link + authenticator-app second factor — owner decision; built) | Name, work email, sign-in subject, MFA evidence, session records | [Owner to complete] | [Owner to complete] |
 | Security and audit logging | Actor IDs, IP-derived rate keys, actions | [Owner to complete] | [Owner to complete] |
 | Billing and invoices | Customer company and contact details, usage counts | [Owner to complete] | [Owner to complete] |
 | Sales enquiries ("Book a demo" → vitalos.co.uk) | Business contact details | [Owner to complete] | [Owner to complete] |

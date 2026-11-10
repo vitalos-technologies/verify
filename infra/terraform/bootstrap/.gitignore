@@ -1,0 +1,6 @@
+# Bootstrap runs with local state on the owner's machine. Never commit state or plans.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.plan
+*.tfvars

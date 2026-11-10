@@ -65,19 +65,22 @@ module "observability" {
 }
 
 module "compute" {
-  source               = "../../modules/compute"
-  name                 = local.name
-  vpc_id               = module.network.vpc_id
-  private_subnet_ids   = module.network.private_subnet_ids
-  public_subnet_ids    = module.network.public_subnet_ids
-  certificate_arn      = var.certificate_arn
-  api_image            = var.api_image
-  web_image            = var.web_image
-  evidence_bucket_arn  = module.evidence.bucket_arn
-  evidence_kms_key_arn = module.evidence.kms_key_arn
-  queue_arns           = values(module.queues.queue_arns)
-  secret_arns          = [module.database.master_secret_arn]
-  log_group_names      = module.observability.log_group_names
+  source                = "../../modules/compute"
+  name                  = local.name
+  vpc_id                = module.network.vpc_id
+  private_subnet_ids    = module.network.private_subnet_ids
+  public_subnet_ids     = module.network.public_subnet_ids
+  certificate_arn       = var.certificate_arn
+  api_image             = var.api_image
+  web_image             = var.web_image
+  evidence_bucket_arn   = module.evidence.bucket_arn
+  evidence_kms_key_arn  = module.evidence.kms_key_arn
+  evidence_bucket_name  = module.evidence.bucket_name
+  tombstone_bucket_arn  = module.evidence.tombstone_bucket_arn
+  tombstone_bucket_name = module.evidence.tombstone_bucket_name
+  queue_arns            = values(module.queues.queue_arns)
+  secret_arns           = [module.database.master_secret_arn]
+  log_group_names       = module.observability.log_group_names
 }
 
 module "database" {

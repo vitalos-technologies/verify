@@ -157,7 +157,7 @@ Run one file: `uv run pytest tests/test_at01_isolation.py -q`
 | OTP abuse (AT-15) | `tests/test_at15_contact.py` | Pass (mock messenger) |
 | Evidence minimisation and reveal (AT-24) | `tests/test_at24_evidence.py`, `tests/test_verifier2_evidence.py` | Pass |
 | OIDC / login CSRF / MFA claims / step-up | `tests/test_oidc.py`, `tests/test_verifier2_oidc.py` | Pass (fake IdP) |
-| Magic link, TOTP, replay, lockout, step-up by code | `tests/test_signin.py` | **In progress** (uncommitted on 10 Nov 2026) |
+| Magic link, TOTP, replay, lockout, step-up by code | `tests/test_signin.py`, `apps/web/e2e/console-signin.spec.ts` | Built and passing (commit 270eea6) |
 | Guards: mocks refused in staging, keys required | `tests/test_verifier_guards.py`, `tests/test_verifier_ssrf_env.py` | Pass |
 | Platform metadata-only | `tests/test_platform.py` | Pass |
 | Applicant accessibility and journey (axe WCAG 2.2 A/AA, keyboard, camera denied) | `apps/web/e2e/applicant.spec.ts` | Pass (Chromium only) |
