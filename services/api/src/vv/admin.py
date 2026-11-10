@@ -75,6 +75,8 @@ def main() -> None:
     roles.add_argument("--worker-password", default=os.environ.get("VV_WORKER_PASSWORD", "vv_worker_local"))
     sub.add_parser("seed-dev")
     sub.add_parser("replay-tombstones", help="Re-apply all deletions after a backup restore (run before serving)")
+    rex = sub.add_parser("recovery-exercise", help="Restore into an isolated copy, verify, measure, destroy")
+    rex.add_argument("--report-dir", default="../../docs/evidence/recovery")
     args = parser.parse_args()
     dsn = os.environ.get("VV_OWNER_DSN")
     if not dsn:
@@ -91,5 +93,18 @@ def main() -> None:
         from vv.evidence import LocalSealedStore
         s = load_settings()
         print(json.dumps({"replayed": replay_tombstones(dsn, LocalSealedStore(s.evidence_dir, s.data_key))}))
+    elif args.cmd == "recovery-exercise":
+        from pathlib import Path
+
+        from vv.evidence import LocalSealedStore
+        from vv.recovery import run_exercise
+        s = load_settings()
+        report = run_exercise(dsn, LocalSealedStore(s.evidence_dir, s.data_key))
+        out = Path(args.report_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"{report['started_at'][:19].replace(':', '')}.json"
+        path.write_text(json.dumps(report, indent=2) + "\n")
+        print(json.dumps({"passed": report["passed"], "report": str(path),
+                          "rto_seconds": report["measured_rto_seconds"]}))
     elif args.cmd == "seed-dev":
         print(json.dumps(seed_dev(dsn), indent=2))

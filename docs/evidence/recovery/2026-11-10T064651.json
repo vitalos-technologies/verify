@@ -1,0 +1,88 @@
+{
+  "exercise": "logical_restore_isolated",
+  "started_at": "2026-11-10T06:46:51.165561+00:00",
+  "restore_database": "vv_restore_20261110064651",
+  "steps": [
+    {
+      "step": "backup_taken",
+      "t_seconds": 0.2,
+      "bytes": 119715
+    },
+    {
+      "step": "restored",
+      "t_seconds": 0.59,
+      "pg_restore_exit": 0
+    },
+    {
+      "step": "outbound_disabled",
+      "t_seconds": 0.6
+    },
+    {
+      "step": "tombstones_replayed",
+      "t_seconds": 0.61,
+      "count": 0
+    },
+    {
+      "step": "verified",
+      "t_seconds": 0.63
+    },
+    {
+      "step": "exercise_copy_destroyed",
+      "t_seconds": 0.68
+    }
+  ],
+  "source_counts": {
+    "tenants": 1,
+    "memberships": 1,
+    "sessions": 1,
+    "attempts": 0,
+    "checks": 0,
+    "decisions": 0,
+    "evidence": 0,
+    "outbox": 1,
+    "webhook_deliveries": 0,
+    "deletion_jobs": 0,
+    "deletion_tombstones": 0,
+    "usage_events": 2,
+    "audit_events": 2
+  },
+  "restored_counts": {
+    "tenants": 1,
+    "memberships": 1,
+    "sessions": 1,
+    "attempts": 0,
+    "checks": 0,
+    "decisions": 0,
+    "evidence": 0,
+    "outbox": 1,
+    "webhook_deliveries": 0,
+    "deletion_jobs": 0,
+    "deletion_tombstones": 0,
+    "usage_events": 2,
+    "audit_events": 2
+  },
+  "counts_match": true,
+  "migrations": [
+    "0001_foundation",
+    "0002_applicant_handoff",
+    "0003_deletion_lifecycle",
+    "0004_reviews_appeals",
+    "0005_verifier_fixes",
+    "0006_billing",
+    "0007_evidence",
+    "0008_oidc"
+  ],
+  "tables_with_rls": 28,
+  "tombstone_leaks_after_replay": 0,
+  "evidence_objects_missing": 0,
+  "outbound_work_remaining": 0,
+  "measured_rto_seconds": 0.69,
+  "rpo_seconds_at_backup": 2419.56,
+  "targets": {
+    "rto_seconds": 14400,
+    "rpo_seconds": 900,
+    "status": "proposed_not_approved"
+  },
+  "limitations": "Logical dump of synthetic data on one host; not PITR, cross-region, object-store or provider-state recovery.",
+  "passed": true
+}

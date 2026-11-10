@@ -210,6 +210,16 @@
         "console case page evidence viewer"
       ],
       "gap": "Local sealed store for dev/CI only; production needs a private KMS-encrypted bucket (M02-T04). Dummy provider supplies synthetic SVG placeholders, no real images. Retention 30 days is a proposal."
+    },
+    "M07-T02": {
+      "status": "in_progress",
+      "evidence": [
+        "services/api/src/vv/recovery.py",
+        "services/api/tests/test_at14_recovery.py",
+        "docs/evidence/recovery/2026-11-10T064651.json (dev, synthetic: passed, RTO 0.69 s)",
+        "vv_dev upgraded 0001->0008 in place without data loss"
+      ],
+      "gap": "Logical restore on one host only. Production PITR, object-store restore, provider-state reconciliation and approved RPO/RTO need the real environment (M02-T04)."
     }
   },
   "acceptance_scenarios": {
@@ -227,7 +237,8 @@
     "AT-23": "pass",
     "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)",
     "AT-12": "pass (synthetic; supplier invoice simulated)",
-    "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)"
+    "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)",
+    "AT-14": "partial: isolated logical restore exercise passes (counts match, tombstones replayed, outbound disabled, copy destroyed); not production-equivalent"
   },
   "verification": {
     "81686a7": {
