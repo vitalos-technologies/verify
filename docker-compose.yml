@@ -1,0 +1,10 @@
+# Local development database only (synthetic data). Not a deployment definition.
+services:
+  postgres:
+    image: postgres:16.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_local_only
+    ports: ["5432:5432"]
+    volumes:
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro

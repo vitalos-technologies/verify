@@ -1,0 +1,16 @@
+# Implementation decisions (repository)
+
+Recorded per 02_decisions_and_assumptions.md: date, decision, alternatives, impact. All dated 2026-11-10.
+
+| ID | Decision | Alternatives considered | Impact / revisit |
+|---|---|---|---|
+| IMP-01 | Repository is `vitalos-technologies/verify` (owner-created) rather than the proposed `vitalos-verify` (ADR-07). | Create new repo | None. |
+| IMP-02 | API and worker ship from one Python package (`services/api`, entrypoints `vv-api`, `vv-worker`), deployed as separate processes. | Separate `services/worker` package | Matches ADR-10 modular monolith; split when measured need appears. |
+| IMP-03 | Prototype queue is PostgreSQL tables (`provider_events`, `outbox`, `webhook_deliveries`) polled by the worker. | SQS (05_architecture) | No cloud dependency before M02-T04. Swap transport to SQS when infra exists; outbox semantics unchanged. |
+| IMP-04 | Synthetic country `ZZ` (ISO 3166 user-assigned) is the only enabled coverage, routed to the DummyProvider and refused in staging/production. | Enable GB entries against dummy | Prevents any implied real-document support. |
+| IMP-05 | Policy rule order: technical error → high-risk indicator → capture quality → missing evidence → expiry/support → mandatory pass. | Spec order (missing evidence before high-risk) | A poor capture legitimately leaves downstream checks `not_run`; suspected attack must not be masked as "missing". Security floor unchanged: nothing approves unless every mandatory check passes. |
+| IMP-06 | Pilot routes `fail`/`inconclusive` face match, liveness and authenticity to `review_required`; automated `declined` only for an expired document after retries. | Auto-decline on failures | Conservative (07 §Example pilot policy, 10 §Meaningful review). Revisit with assurance owner. |
+| IMP-07 | `/console/dev-login` stands in for OIDC sign-in in development/test/ci only. | Build Cognito integration now | IdP not selected (M01). Not mounted outside non-production. |
+| IMP-08 | Row-level security enabled (not forced); runtime roles `vv_app`/`vv_worker` are non-owners without BYPASSRLS. Pre-tenant lookups use five narrow SECURITY DEFINER functions. | FORCE RLS + owner-run lookups | Owner/migration role can bypass RLS; restrict its use to migrations. |
+| IMP-09 | Provider callbacks carry no result: the worker always fetches the authoritative observation. | Trust signed callback payload | Signed-but-stale or misrouted callbacks cannot approve (AT-06). |
+| IMP-10 | Prices in code (`session_price_minor=250`) are the 16_pricing hypothesis, labelled as such in policy cost previews. | — | Not an approved price; replace when M06 pricing is decided. |

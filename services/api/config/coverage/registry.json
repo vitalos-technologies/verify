@@ -1,0 +1,45 @@
+{
+  "registry_version": "pilot_1",
+  "status": "planning",
+  "notes": "VV-023 capability enablement matrix. Every real country/document entry is disabled until a contracted provider, region approval, notices and test evidence exist (M01). The ZZ entries use the ISO 3166 user-assigned code reserved here for synthetic data and route only to the dummy provider outside production.",
+  "providers": {
+    "dummy": {
+      "kind": "dummy",
+      "description": "Deterministic synthetic provider for development and CI. Not a real supplier.",
+      "processing_regions": ["synthetic"],
+      "allowed_environments": ["development", "test", "ci"],
+      "deletion_support": true,
+      "score_semantics": "dummy_fixed_0_1_uncalibrated"
+    },
+    "unselected": {
+      "kind": "placeholder",
+      "description": "No supplier contracted (M01-T01/T02 open).",
+      "processing_regions": [],
+      "allowed_environments": [],
+      "deletion_support": false,
+      "score_semantics": "unknown"
+    }
+  },
+  "entries": [
+    {"id": "zz-passport-dummy", "country": "ZZ", "document_type": "passport", "provider": "dummy",
+     "checks": ["government_id", "face_match", "liveness"], "capture_modes": ["hosted_web"],
+     "processing_region": "synthetic", "use_cases": ["workforce_onboarding"], "enabled": true,
+     "evidence": "synthetic fixtures only"},
+    {"id": "zz-driving_licence-dummy", "country": "ZZ", "document_type": "driving_licence", "provider": "dummy",
+     "checks": ["government_id", "face_match", "liveness"], "capture_modes": ["hosted_web"],
+     "processing_region": "synthetic", "use_cases": ["workforce_onboarding"], "enabled": true,
+     "evidence": "synthetic fixtures only"},
+    {"id": "gb-passport", "country": "GB", "document_type": "passport", "provider": "unselected",
+     "checks": ["government_id", "face_match", "liveness"], "capture_modes": ["hosted_web"],
+     "processing_region": "unconfirmed", "use_cases": ["workforce_onboarding"], "enabled": false,
+     "evidence": "none: awaiting supplier coverage evidence", "alternative": "Ask the requesting organisation for its manual identity check route."},
+    {"id": "gb-driving_licence", "country": "GB", "document_type": "driving_licence", "provider": "unselected",
+     "checks": ["government_id", "face_match", "liveness"], "capture_modes": ["hosted_web"],
+     "processing_region": "unconfirmed", "use_cases": ["workforce_onboarding"], "enabled": false,
+     "evidence": "none: awaiting supplier coverage evidence", "alternative": "Ask the requesting organisation for its manual identity check route."},
+    {"id": "ie-passport", "country": "IE", "document_type": "passport", "provider": "unselected",
+     "checks": ["government_id", "face_match", "liveness"], "capture_modes": ["hosted_web"],
+     "processing_region": "unconfirmed", "use_cases": ["workforce_onboarding"], "enabled": false,
+     "evidence": "none: awaiting supplier coverage evidence", "alternative": "Ask the requesting organisation for its manual identity check route."}
+  ]
+}
