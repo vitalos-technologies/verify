@@ -12,17 +12,22 @@ Multi-tenant identity-verification platform (pre-pilot prototype).
 
 | Area | Requirement | State |
 |---|---|---|
-| Tenancy, roles, scoped API keys, revocation | VV-001, VV-002 | Implemented; OIDC + MFA pending IdP choice |
+| Tenancy, roles, scoped API keys, revocation; OIDC + PKCE sign-in with MFA and step-up | VV-001, VV-002 | Implemented (fake IdP in tests; IdP not chosen) |
 | PostgreSQL isolation: composite keys, row-level security, non-owner runtime roles | VV-001 | Implemented |
-| Verification sessions: idempotent create, expiry, one-use hosted link, cursor lists | VV-003 | Implemented |
-| Coverage matrix, real entries default-disabled, 422 before capture/charge | VV-023 | Implemented |
-| Email contact verification with rate, abuse and spend limits | VV-015 | Implemented (dummy messenger) |
-| Provider adapter contract + authenticated callbacks + authoritative fetch | VV-005, VV-006 | Dummy provider only |
-| Versioned immutable policies, fixture replay on publish, decision traces | VV-007 | Implemented |
-| Reviewer decisions with expected revision, alternative method | VV-008 (part) | Partial (no leases/appeals) |
-| Outbox, signed webhooks, retries, replay, SSRF/DNS-rebind protection | VV-011 | Implemented |
-| Applicant web journey (Next.js): notice, email code, capture, retry, QR device handoff, alternative route | VV-004 | Implemented with dummy capture; automated a11y tests pass |
-| Deletion, usage billing, Workforce adapter | VV-009, VV-012, VV-013 | Not started |
+| Sessions: idempotent create, expiry, one-use link, QR device handoff | VV-003 | Implemented |
+| Coverage matrix (real entries disabled), 422 before capture/charge | VV-023 | Implemented |
+| Applicant web journey + accessibility tests | VV-004 | Implemented (dummy capture; manual device/screen-reader tests outstanding) |
+| Email contact codes with abuse and spend limits | VV-015 | Implemented (dummy messenger) |
+| Provider adapter, authenticated callbacks, authoritative fetch | VV-005, VV-006 | Dummy provider only |
+| Versioned policies, fixture replay, decision traces | VV-007 | Implemented |
+| Review queue, leases, second review, appeals; console UI | VV-008 | Implemented |
+| Deletion lifecycle, legal holds, tombstone replay | VV-009 | Implemented (backup expiry is a tracked clock) |
+| Sealed evidence, purpose-bound reveal receipts, minimal exports | VV-010, VV-024 | Implemented (local store; S3 adapter pending) |
+| Signed webhooks, retries, replay, SSRF protection | VV-011 | Implemented |
+| Usage ledger, credits, invoices, supplier reconciliation | VV-012 | Implemented (hypothesis prices) |
+| Workforce client (verification, tenant binding, ordering) | VV-013 | Client only; not wired into Workforce |
+| Recovery exercise (isolated restore, tombstones, RTO) | VV-014 | Synthetic exercise; no production infra |
+| Terraform baseline (staging) | M02-T04 | Code + CI validation; never applied |
 
 ## Run locally
 
