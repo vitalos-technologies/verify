@@ -220,6 +220,15 @@
         "vv_dev upgraded 0001->0008 in place without data loss"
       ],
       "gap": "Logical restore on one host only. Production PITR, object-store restore, provider-state reconciliation and approved RPO/RTO need the real environment (M02-T04)."
+    },
+    "M06-T02": {
+      "status": "in_progress",
+      "evidence": [
+        "packages/verify-client (TS client: create/get, webhook verification, tenant binding, dedup, out-of-order handling, identity-only mapping)",
+        "packages/verify-client/test/client.test.ts",
+        "cross-language signature fixture checked by Python and TS"
+      ],
+      "gap": "Vitalos Workforce repository is not attached to this session, so the client is not yet wired into Workforce. AT-13 end-to-end with real Workforce tenants not run."
     }
   },
   "acceptance_scenarios": {
@@ -238,7 +247,8 @@
     "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)",
     "AT-12": "pass (synthetic; supplier invoice simulated)",
     "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)",
-    "AT-14": "partial: isolated logical restore exercise passes (counts match, tombstones replayed, outbound disabled, copy destroyed); not production-equivalent"
+    "AT-14": "partial: isolated logical restore exercise passes (counts match, tombstones replayed, outbound disabled, copy destroyed); not production-equivalent",
+    "AT-13": "partial: client-level test with two tenants, out-of-order and duplicate events passes; Workforce wiring pending"
   },
   "verification": {
     "81686a7": {

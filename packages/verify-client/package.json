@@ -1,0 +1,17 @@
+{
+  "name": "@vitalos/verify-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Server-side client for Vitalos Verify (used by Vitalos Workforce). Identity status only; never work eligibility.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "typescript": "5.9.3"
+  },
+  "engines": { "node": ">=22.6" }
+}

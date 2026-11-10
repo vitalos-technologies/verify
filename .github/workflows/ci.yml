@@ -81,3 +81,15 @@ jobs:
         working-directory: apps/web
       - run: npm run test:e2e
         working-directory: apps/web
+
+  verify-client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: packages/verify-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: packages/verify-client/package-lock.json }
+      - run: npm ci && npx tsc --noEmit && npm test

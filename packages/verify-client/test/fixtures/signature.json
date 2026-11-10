@@ -1,0 +1,6 @@
+{
+  "secret": "whsec_fixture_not_a_real_secret",
+  "timestamp": 1794300000,
+  "body": "{\"id\":\"evt_fixture_1\",\"type\":\"verification.completed\",\"occurred_at\":\"2026-11-10T12:00:00Z\",\"tenant_reference\":\"ten_fixture\",\"resource_id\":\"ver_fixture\",\"resource_version\":3,\"data\":{\"state\":\"approved\",\"reason_codes\":[]}}",
+  "signature": "v1=61c24951066a57c6aadc6d7de89f46af38ee76bf8a0ddb002a73908a9369bf13"
+}

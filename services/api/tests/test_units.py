@@ -120,3 +120,10 @@ def test_non_public_addresses_rejected(ip):
 def test_public_address_pinned():
     assert validate_destination("https://h.example:8443/x?y=1", lambda h, p: ["93.184.215.14"]) == (
         "h.example", 8443, "/x?y=1", "93.184.215.14")
+
+
+def test_cross_language_signature_fixture():
+    """The TypeScript client verifies signatures produced by this implementation (packages/verify-client)."""
+    from vv.config import SERVICE_ROOT
+    fx = json.loads((SERVICE_ROOT.parent.parent / "packages/verify-client/test/fixtures/signature.json").read_text())
+    assert crypto.sign_webhook(fx["secret"].encode(), fx["timestamp"], fx["body"].encode()) == fx["signature"]
