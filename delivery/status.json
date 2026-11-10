@@ -268,7 +268,7 @@
         "Workforce P4 independent verifier: PASS on cdc55df",
         "packages/verify-client"
       ],
-      "follow_ups": "vitalos-technologies/workforce#404 (Verify call outside DB transaction, hosted-link origin check, ADR status)",
+      "follow_ups": "vitalos-technologies/workforce#404 merged 2026-11-10 (Verify call outside DB transaction, hosted-link origin check, ADR status)",
       "gap": "Owner sets VERIFY_* secrets (incl. optional VERIFY_HOSTED_ORIGIN) and registers the Workforce webhook in Verify; Workforce portal UI not built; AT-13 end-to-end against live Verify pending deployment."
     },
     "M05-T03": {
