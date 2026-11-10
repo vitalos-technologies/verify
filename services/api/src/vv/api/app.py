@@ -528,6 +528,46 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             return billing.reconcile_supplier(conn, principal.tenant_id, body.period,
                                               [x.model_dump() for x in body.lines])
 
+    @app.get("/console/me")
+    def console_me(principal: Console):
+        with db.tenant_tx(principal.tenant_id) as conn:
+            t = conn.execute("SELECT name FROM tenants WHERE id = %s", (principal.tenant_id,)).fetchone()
+            m = conn.execute("SELECT role FROM memberships WHERE tenant_id = %s AND id = %s",
+                             (principal.tenant_id, principal.actor_id)).fetchone()
+        return {"tenant_name": t["name"], "membership_id": principal.actor_id, "role": m["role"],
+                "permissions": sorted(principal.permissions)}
+
+    @app.get("/console/verifications")
+    def console_list(principal: Console, cursor: str | None = None, limit: int = 25,
+                     state_filter: Annotated[str | None, Query(alias="state")] = None):
+        principal.require("sessions:read")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return service.list_sessions(conn, principal.tenant_id, cursor=cursor, limit=limit, state=state_filter)
+
+    @app.get("/console/verifications/{session_id}/timeline")
+    def console_timeline(session_id: str, principal: Console):
+        principal.require("sessions:read")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            service.get_session(conn, principal.tenant_id, session_id)
+            decisions = [{"at": r["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "decision",
+                          "revision": r["revision"], "outcome": r["outcome"], "method": r["method"],
+                          "actor_type": r["actor_type"], "reason_codes": list(r["reason_codes"])}
+                         for r in conn.execute("SELECT * FROM decisions WHERE tenant_id = %s AND session_id = %s",
+                                               (principal.tenant_id, session_id))]
+            events_ = [{"at": r["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "event",
+                        "type": r["event_type"], "state": r["payload"]["state"]}
+                       for r in conn.execute("SELECT * FROM outbox WHERE tenant_id = %s AND resource_id = %s",
+                                             (principal.tenant_id, session_id))]
+            rev = conn.execute("SELECT * , coalesce(lease_expires_at > now(), false) AS leased FROM reviews "
+                               "WHERE tenant_id = %s AND session_id = %s AND status <> 'closed'",
+                               (principal.tenant_id, session_id)).fetchone()
+            appeal = conn.execute("SELECT id, status, assignee FROM appeals WHERE tenant_id = %s AND session_id = %s "
+                                  "AND status <> 'resolved'", (principal.tenant_id, session_id)).fetchone()
+        items = sorted(decisions + events_, key=lambda x: x["at"])
+        return {"items": items,
+                "review": review._out(rev) if rev else None,
+                "appeal": dict(appeal) if appeal else None}
+
     @app.get("/console/verifications/{session_id}")
     def console_get_verification(session_id: str, principal: Console):
         principal.require("sessions:read")

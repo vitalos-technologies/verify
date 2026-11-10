@@ -9,8 +9,9 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: "http://localhost:3100", trace: "off", launchOptions: { args: fakeMedia } },
   projects: [
-    { name: "mobile-390", use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
-    { name: "narrow-320", use: { viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
+    { name: "mobile-390", testIgnore: /console/, use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
+    { name: "narrow-320", testIgnore: /console|screens/, use: { viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
+    { name: "desktop", testMatch: /console/, use: { viewport: { width: 1280, height: 900 } } },
   ],
   webServer: [
     { command: "bash e2e/stack.sh", url: "http://localhost:8100/healthz", timeout: 120_000, reuseExistingServer: false },

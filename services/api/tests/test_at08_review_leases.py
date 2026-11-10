@@ -145,3 +145,23 @@ def test_appeal_goes_to_different_reviewer_and_appends_revision(client, worker, 
     assert hold["appeal_hold_until"] is not None
     for c in (r1, r2):
         c.__exit__(None, None, None)
+
+
+def test_console_list_me_and_timeline(client, worker, make_tenant, settings):
+    t = make_tenant()
+    view = _review_case(client, worker, t, settings)
+    (r1,) = _reviewers(client.app, t, 1)
+    me = r1.get("/console/me").json()
+    assert me["role"] == "reviewer" and "decisions:write" in me["permissions"]
+    items = r1.get("/console/verifications", params={"state": "review_required"}).json()["items"]
+    assert [i["id"] for i in items] == [view["id"]]
+    tl = r1.get(f"/console/verifications/{view['id']}/timeline").json()
+    assert tl["review"]["status"] == "open"
+    assert [i["type"] for i in tl["items"] if i["kind"] == "event"][:1] == ["verification.created"]
+    assert any(i["kind"] == "decision" and i["outcome"] == "review_required" for i in tl["items"])
+    other = make_tenant()
+    with TestClient(client.app) as ob:
+        csrf = ob.post("/console/dev-login", json={"tenant_id": other.id, "user_subject": other.owner_subject}).json()
+        assert csrf
+        assert ob.get(f"/console/verifications/{view['id']}/timeline").status_code == 404
+    r1.__exit__(None, None, None)

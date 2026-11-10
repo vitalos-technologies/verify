@@ -33,7 +33,10 @@ const nextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   async rewrites() {
-    const rules = [{ source: "/applicant/:path*", destination: `${apiOrigin}/applicant/:path*` }];
+    const rules = [
+      { source: "/applicant/:path*", destination: `${apiOrigin}/applicant/:path*` },
+      { source: "/console/:path*", destination: `${apiOrigin}/console/:path*` },
+    ];
     if (devRoutes) rules.push({ source: "/dummy-provider/:path*", destination: `${apiOrigin}/dummy-provider/:path*` });
     return rules;
   },

@@ -165,7 +165,9 @@
       "evidence": [
         "services/api/migrations/0004_reviews_appeals.sql",
         "services/api/src/vv/review.py",
-        "services/api/tests/test_at08_review_leases.py"
+        "services/api/tests/test_at08_review_leases.py",
+        "apps/web/app/app (console: list, review queue, case page with claim/decide/second review/appeal)",
+        "apps/web/e2e/console.spec.ts (axe + claim/decide)"
       ],
       "done": [
         "review queue by age",
@@ -173,7 +175,7 @@
         "second different reviewer for alternative-method approvals (console)",
         "appeals: conflict-of-interest routing, ack/resolve due dates, evidence hold, appended decision revision + event"
       ],
-      "gap": "API-key decisions do not enforce second review (customer-operated review UIs). Evidence masking/reveal not built (no evidence objects stored yet). No reviewer console UI yet."
+      "gap": "API-key decisions do not enforce second review. Evidence masking/reveal not built (no evidence objects stored yet). Console sign-in is dev-only until OIDC/MFA."
     },
     "M06-T01": {
       "status": "implemented",

@@ -1,0 +1,86 @@
+// Console: list, review queue, claim and decide; accessibility scans. Synthetic stack only.
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, request as pwRequest, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const API = "http://localhost:8100";
+const seed = () => JSON.parse(readFileSync(join(__dirname, ".state/seed.json"), "utf8"));
+
+async function axe(page: Page, label: string) {
+  const res = await new AxeBuilder({ page: page as never }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  expect(res.violations.map((v) => `${label}: ${v.id} (${v.impact})`)).toEqual([]);
+}
+
+async function reviewCase(ref: string): Promise<string> {
+  const s = seed();
+  const r = await fetch(`${API}/v1/verifications`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${s.api_key}`, "Idempotency-Key": `con-${Date.now()}-${ref}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ external_reference: ref, policy_id: "workforce_identity", policy_version: 1, country: "ZZ", document_type: "passport" }),
+  });
+  const body = await r.json();
+  const token = new URL(body.hosted_url).pathname.split("/").pop();
+  const app = await pwRequest.newContext({ baseURL: API });
+  await app.post("/applicant/exchange", { data: { token } });
+  await app.post("/applicant/notice", { data: { notice_version: "notice-synthetic-1" } });
+  await app.post("/applicant/contact/send", { data: { channel: "email", destination: `${ref}.${Date.now()}@synthetic.example` } });
+  const { code } = await (await fetch(`${API}/dev/last-contact-code`)).json();
+  await app.post("/applicant/contact/verify", { data: { code } });
+  const att = await (await app.post("/applicant/attempts")).json();
+  await app.post("/dummy-provider/capture", { data: { capture_token: att.capture_token, scenario: "liveness_inconclusive" } });
+  await app.post(`/applicant/attempts/${att.attempt_id}/submitted`);
+  await app.dispose();
+  await expect.poll(async () => (await (await fetch(`${API}/v1/verifications/${body.session.id}`,
+    { headers: { Authorization: `Bearer ${s.api_key}` } })).json()).state, { timeout: 15000 }).toBe("review_required");
+  return body.session.id;
+}
+
+async function signIn(page: Page) {
+  const s = seed();
+  await page.goto("/app/login");
+  await page.getByLabel("Organisation ID").fill(s.tenant_id);
+  await page.getByLabel("User").fill(s.owner_subject);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Verifications" })).toBeVisible();
+}
+
+test("reviewer claims and decides a case; evidence stays unchanged", async ({ page }) => {
+  const sid = await reviewCase(`case-${Date.now()}`);
+  await signIn(page);
+  await page.getByRole("button", { name: "Needs review" }).click();
+  await expect(page.getByRole("link").filter({ hasText: /^case-/ }).first()).toBeVisible({ timeout: 15000 });
+  await axe(page, "list");
+  await page.getByRole("link", { name: "Reviews" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Reviews" })).toBeVisible();
+  await axe(page, "reviews");
+  await page.goto(`/app/cases/${sid}`);
+  await expect(page.getByRole("button", { name: "Claim" })).toBeVisible();
+  await page.getByRole("button", { name: "Claim" }).click();
+  await expect(page.getByRole("button", { name: "Record decision" })).toBeVisible();
+  await axe(page, "case-claimed");
+  await page.getByLabel("Decline").check();
+  await page.getByLabel("Reason").fill("Liveness could not be confirmed");
+  await page.getByRole("button", { name: "Record decision" }).click();
+  await expect(page.locator(".meta .chip").first()).toHaveText("Declined");
+  await expect(page.locator(".rows li", { hasText: "Liveness" }).locator(".chip")).toHaveText("inconclusive");
+  const v = await (await fetch(`${API}/v1/verifications/${sid}`, { headers: { Authorization: `Bearer ${seed().api_key}` } })).json();
+  expect(v.state).toBe("declined");
+  expect(v.decision.method).toBe("evidence_review");
+});
+
+test("console screenshots", async ({ page }) => {
+  const out = process.env.SCREENS_DIR;
+  test.skip(!out, "set SCREENS_DIR");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const sid = await reviewCase(`shot-${Date.now()}`);
+  await signIn(page);
+  await page.screenshot({ path: join(out!, "10-console-list.png") });
+  await page.getByRole("link", { name: "Reviews" }).click();
+  await expect(page.getByRole("button", { name: "Claim" }).first()).toBeVisible();
+  await page.screenshot({ path: join(out!, "11-console-reviews.png") });
+  await page.goto(`/app/cases/${sid}`);
+  await page.getByRole("button", { name: "Claim" }).click();
+  await expect(page.getByRole("button", { name: "Record decision" })).toBeVisible();
+  await page.screenshot({ path: join(out!, "12-console-case.png"), fullPage: true });
+});

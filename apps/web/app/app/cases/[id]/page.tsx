@@ -1,0 +1,135 @@
+"use client";
+
+import { use, useCallback, useEffect, useState } from "react";
+
+import Chip from "../../Chip";
+import { con, LABEL, type Review, type Session, when } from "@/lib/console";
+
+type Item = { at: string; kind: "decision" | "event"; type?: string; state?: string; revision?: number; outcome?: string; method?: string; actor_type?: string; reason_codes?: string[] };
+type Timeline = { items: Item[]; review: (Review & { proposed_by?: string }) | null; appeal: { id: string; status: string; assignee: string | null } | null };
+
+export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [s, setS] = useState<Session | null>(null);
+  const [tl, setTl] = useState<Timeline | null>(null);
+  const [me, setMe] = useState<string>("");
+  const [error, setError] = useState("");
+  const [note, setNote] = useState("");
+  const [outcome, setOutcome] = useState("declined");
+  const [method, setMethod] = useState("evidence_review");
+  const [reason, setReason] = useState("");
+  const [summary, setSummary] = useState("");
+
+  const load = useCallback(async () => {
+    const [sv, t, m] = await Promise.all([
+      con<Session>(`/verifications/${id}`), con<Timeline>(`/verifications/${id}/timeline`), con<{ membership_id: string }>("/me"),
+    ]);
+    setS(sv); setTl(t); setMe(m.membership_id);
+  }, [id]);
+  useEffect(() => { load().catch(() => setError("Not found.")); }, [load]);
+
+  async function act(fn: () => Promise<unknown>, done: string) {
+    setError(""); setNote("");
+    try { await fn(); setNote(done); setReason(""); await load(); } catch (e) { setError((e as Error).message); }
+  }
+
+  if (error && !s) return <main><h1>Case</h1><p role="alert">{error}</p></main>;
+  if (!s || !tl) return <main><p className="muted">Loading</p></main>;
+
+  const review = tl.review;
+  const mine = review?.status === "claimed" && review.assignee === me;
+  const evidence = s.checks.filter((c) => !c.id.startsWith("chk_pending")).map((c) => c.id);
+  const decide = () => act(() => con(`/reviews/${review!.id}/decision`, {
+    expected_revision: s.revision, outcome, method, reason, evidence_ids: evidence, lock_version: review!.lock_version,
+  }), method === "alternative_method" && outcome === "approved" ? "Sent for second review" : "Decision recorded");
+  const appeal = tl.appeal;
+
+  return (
+    <main>
+      <h1>{s.external_reference}</h1>
+      <div className="meta">
+        <Chip value={s.state} />
+        <span>Policy {s.policy_id} v{s.policy_version}</span>
+        <span>Created {when(s.created_at)}</span>
+        <span>Revision {s.revision}</span>
+      </div>
+      <p className="sr-only" role="status" aria-live="polite">{note}</p>
+      {note && <p className="banner">{note}</p>}
+      {error && <p className="error-summary" role="alert">{error}</p>}
+
+      <div className="grid">
+        <section aria-labelledby="checks-h">
+          <h2 id="checks-h">Checks</h2>
+          <ul className="rows">
+            {s.checks.map((c) => (
+              <li key={c.id}>
+                <span>{LABEL[c.type] ?? c.type}{c.result !== "pass" && c.reasons.some((r) => !r.endsWith(c.result)) && <span className="muted"> · {c.reasons.filter((r) => !r.endsWith(c.result)).join(", ")}</span>}</span>
+                <Chip value={c.result} />
+              </li>
+            ))}
+          </ul>
+
+          <h2>Timeline</h2>
+          <ul className="rows">
+            {tl.items.map((i, n) => (
+              <li key={n}>
+                <span>{i.kind === "decision" ? `Decision r${i.revision}: ${LABEL[i.outcome!] ?? i.outcome} (${LABEL[i.method!]})` : (LABEL[i.state!] ?? i.state)}</span>
+                <span className="muted">{when(i.at)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section aria-labelledby="act-h" className="card">
+          <h2 id="act-h">Actions</h2>
+          {!review && !["approved", "declined"].includes(s.state) && <p className="muted">Nothing to do</p>}
+
+          {review?.status === "open" && <button className="btn" onClick={() => act(() => con(`/reviews/${review.id}/claim`, {}), "Claimed")}>Claim</button>}
+          {review?.status === "claimed" && !mine && <p className="muted">Claimed by another reviewer</p>}
+          {review?.status === "awaiting_second_review" && (review.proposed_by === me
+            ? <p className="muted">Waiting for a second reviewer</p>
+            : (<>
+              <p>Approve by alternative method?</p>
+              <button className="btn" onClick={() => act(() => con(`/reviews/${review.id}/second-review`, { confirm: true }), "Confirmed")}>Confirm</button>
+              <button className="btn secondary" onClick={() => act(() => con(`/reviews/${review.id}/second-review`, { confirm: false }), "Returned to queue")}>Reject</button>
+            </>))}
+
+          {mine && (<>
+            <fieldset>
+              <legend>Outcome</legend>
+              {[["approved", "Approve"], ["declined", "Decline"], ["action_required", "Ask to retry"]].map(([v, l]) => (
+                <label key={v} className="check" htmlFor={`o-${v}`}><input type="radio" id={`o-${v}`} name="outcome" checked={outcome === v} onChange={() => setOutcome(v)} /><span>{l}</span></label>
+              ))}
+            </fieldset>
+            <fieldset>
+              <legend>Method</legend>
+              {[["evidence_review", "Evidence review"], ["alternative_method", "Alternative method"]].map(([v, l]) => (
+                <label key={v} className="check" htmlFor={`m-${v}`}><input type="radio" id={`m-${v}`} name="method" checked={method === v} onChange={() => setMethod(v)} /><span>{l}</span></label>
+              ))}
+            </fieldset>
+            <label htmlFor="reason">Reason</label>
+            <textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <button className="btn" onClick={decide} disabled={reason.trim().length < 10}>Record decision</button>
+          </>)}
+
+          {["approved", "declined"].includes(s.state) && !appeal && (<>
+            <label htmlFor="appeal">Record appeal</label>
+            <textarea id="appeal" value={summary} onChange={(e) => setSummary(e.target.value)} />
+            <button className="btn secondary" disabled={summary.trim().length < 10}
+              onClick={() => act(() => con(`/verifications/${s.id}/appeals`, { summary }), "Appeal recorded")}>Record appeal</button>
+          </>)}
+          {appeal?.status === "open" && <button className="btn" onClick={() => act(() => con(`/appeals/${appeal.id}/claim`, {}), "Appeal claimed")}>Claim appeal</button>}
+          {appeal?.status === "claimed" && appeal.assignee === me && (<>
+            <p>Resolve appeal</p>
+            <label htmlFor="ar">Reason</label>
+            <textarea id="ar" value={reason} onChange={(e) => setReason(e.target.value)} />
+            {[["approved", "Approve (alternative method)", "alternative_method"], ["declined", "Uphold decline", "evidence_review"]].map(([o, l, m]) => (
+              <button key={o} className={o === "approved" ? "btn" : "btn secondary"} disabled={reason.trim().length < 10}
+                onClick={() => act(() => con(`/appeals/${appeal.id}/resolve`, { expected_revision: s.revision, outcome: o, method: m, reason, evidence_ids: evidence }), "Appeal resolved")}>{l}</button>
+            ))}
+          </>)}
+        </section>
+      </div>
+    </main>
+  );
+}

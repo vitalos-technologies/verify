@@ -43,7 +43,7 @@ def _ts(value) -> str | None:
 
 def _out(row: dict) -> dict:
     return {"id": row["id"], "session_id": row["session_id"], "status": row["status"], "assignee": row["assignee"],
-            "lock_version": row["lock_version"],
+            "lock_version": row["lock_version"], "proposed_by": row.get("proposed_by"),
             "lease_expires_at": _ts(row["lease_expires_at"]),
             "created_at": row["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ")}
 
