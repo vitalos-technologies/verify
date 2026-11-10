@@ -49,7 +49,8 @@ def _finish(db: Database, provider: str, event_id: str, state: str, note: str, t
     return state
 
 
-def process_event(db: Database, providers: dict[str, ProviderAdapter], provider_name: str, event_id: str) -> str:
+def process_event(db: Database, providers: dict[str, ProviderAdapter], provider_name: str, event_id: str,
+                  store=None) -> str:
     # Atomic claim with a lease: only one worker processes an event; a crashed worker's claim expires.
     with db.system_tx() as conn:
         ev = conn.execute(
@@ -123,6 +124,11 @@ def process_event(db: Database, providers: dict[str, ProviderAdapter], provider_
                      c.score, c.score_type, observation.observation_id))
             conn.execute("UPDATE attempts SET state = 'completed' WHERE tenant_id = %s AND id = %s",
                          (tenant_id, attempt_id))
+            if store is not None:
+                from vv import evidence
+                for kind, data, ctype in observation.evidence:
+                    evidence.store(conn, store, tenant_id=tenant_id, session_id=session_id, attempt_id=attempt_id,
+                                   kind=kind, data=data, content_type=ctype)
             if s["state"] == "in_progress":
                 s = transition(conn, s, "processing")
             s, result = evaluate_and_record(conn, s)
@@ -141,7 +147,7 @@ def _retry(db: Database, provider: str, event_id: str, delay: float, tenant_id: 
     log("provider_event.retry", provider=provider, event_id=event_id)
 
 
-def process_due_events(db: Database, providers: dict[str, ProviderAdapter], limit: int = 50) -> int:
+def process_due_events(db: Database, providers: dict[str, ProviderAdapter], limit: int = 50, store=None) -> int:
     with db.system_tx() as conn:
         due = list(conn.execute("SELECT provider, event_id, attempts FROM provider_events WHERE processing_state IN "
                                 "('pending','retry','processing') AND next_attempt_at <= now() "
@@ -150,7 +156,7 @@ def process_due_events(db: Database, providers: dict[str, ProviderAdapter], limi
         if row["provider"] not in providers:
             continue
         try:
-            process_event(db, providers, row["provider"], row["event_id"])
+            process_event(db, providers, row["provider"], row["event_id"], store)
         except Exception as exc:  # noqa: BLE001 - one bad event must not stall the queue (D1)
             log("provider_event.failed_unexpectedly", provider=row["provider"], event_id=row["event_id"],
                 error_type=type(exc).__name__)

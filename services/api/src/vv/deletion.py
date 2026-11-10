@@ -114,7 +114,10 @@ def place_legal_hold(conn, tenant_id: str, subject_id: str, owner: str, reason: 
     return hold_id
 
 
-def _redact_primary(conn, tenant_id: str, subject_id: str, session_ids: list[str]) -> None:
+def _redact_primary(conn, tenant_id: str, subject_id: str, session_ids: list[str], store=None) -> None:
+    if store is not None:
+        from vv.evidence import delete_for_sessions
+        delete_for_sessions(conn, store, tenant_id, session_ids)
     conn.execute("UPDATE subjects SET external_reference = 'deleted:' || id, deleted_at = coalesce(deleted_at, now()) "
                  "WHERE tenant_id = %s AND id = %s", (tenant_id, subject_id))
     conn.execute("UPDATE sessions SET external_reference = 'deleted', evidence_access_blocked_at = "
@@ -126,19 +129,21 @@ def _redact_primary(conn, tenant_id: str, subject_id: str, session_ids: list[str
                  (tenant_id, session_ids))
 
 
-def advance_deletions(worker_db: Database, providers: dict[str, ProviderAdapter], limit: int = 50) -> int:
+def advance_deletions(worker_db: Database, providers: dict[str, ProviderAdapter], limit: int = 50,
+                      store=None) -> int:
     with worker_db.system_tx() as conn:
         rows = list(conn.execute("SELECT tenant_id, id FROM deletion_jobs WHERE state <> 'complete' "
                                  "ORDER BY updated_at LIMIT %s", (limit,)))
     for r in rows:
         try:
-            _advance_one(worker_db, providers, r["tenant_id"], r["id"])
+            _advance_one(worker_db, providers, r["tenant_id"], r["id"], store)
         except ApiError:
             continue  # concurrent change; retried next cycle
     return len(rows)
 
 
-def _advance_one(db: Database, providers: dict[str, ProviderAdapter], tenant_id: str, deletion_id: str) -> None:
+def _advance_one(db: Database, providers: dict[str, ProviderAdapter], tenant_id: str, deletion_id: str,
+                 store=None) -> None:
     with db.tenant_tx(tenant_id) as conn:
         job = conn.execute("SELECT * FROM deletion_jobs WHERE tenant_id = %s AND id = %s FOR UPDATE SKIP LOCKED",
                            (tenant_id, deletion_id)).fetchone()
@@ -153,7 +158,7 @@ def _advance_one(db: Database, providers: dict[str, ProviderAdapter], tenant_id:
         if job["primary_state"] != "done":
             tomb = conn.execute("SELECT session_ids FROM deletion_tombstones WHERE tenant_id = %s AND deletion_id = %s",
                                 (tenant_id, deletion_id)).fetchone()
-            _redact_primary(conn, tenant_id, job["subject_id"], tomb["session_ids"])
+            _redact_primary(conn, tenant_id, job["subject_id"], tomb["session_ids"], store)
             conn.execute("UPDATE deletion_jobs SET primary_state = 'done' WHERE tenant_id = %s AND id = %s",
                          (tenant_id, deletion_id))
             job = dict(job, primary_state="done")
@@ -203,13 +208,13 @@ def _advance_one(db: Database, providers: dict[str, ProviderAdapter], tenant_id:
             _set_state(conn, job, "complete")
 
 
-def replay_tombstones(owner_dsn: str) -> int:
+def replay_tombstones(owner_dsn: str, store=None) -> int:
     """After restoring a backup, re-apply every deletion before serving traffic (18_operations §Recovery)."""
     with psycopg.connect(owner_dsn, row_factory=dict_row) as conn:
         tombs = list(conn.execute("SELECT * FROM deletion_tombstones"))
         for t in tombs:
             conn.execute("SELECT set_config('app.tenant_id', %s, true)", (t["tenant_id"],))
-            _redact_primary(conn, t["tenant_id"], t["subject_id"], t["session_ids"])
+            _redact_primary(conn, t["tenant_id"], t["subject_id"], t["session_ids"], store)
             conn.execute("UPDATE applicant_sessions SET expires_at = least(expires_at, now()) WHERE tenant_id = %s "
                          "AND session_id = ANY(%s)", (t["tenant_id"], t["session_ids"]))
         conn.commit()

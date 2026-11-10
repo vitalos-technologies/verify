@@ -192,6 +192,20 @@
         "supplier reconciliation report"
       ],
       "gap": "Prices are hypotheses; no payment processor; supplier invoice import format is a placeholder until a supplier is contracted."
+    },
+    "M05-T05-evidence": {
+      "status": "implemented",
+      "requirements": [
+        "VV-010",
+        "VV-024"
+      ],
+      "evidence": [
+        "services/api/migrations/0007_evidence.sql",
+        "services/api/src/vv/evidence.py",
+        "services/api/tests/test_at24_evidence.py",
+        "console case page evidence viewer"
+      ],
+      "gap": "Local sealed store for dev/CI only; production needs a private KMS-encrypted bucket (M02-T04). Dummy provider supplies synthetic SVG placeholders, no real images. Retention 30 days is a proposal."
     }
   },
   "acceptance_scenarios": {
@@ -203,12 +217,13 @@
     "AT-06": "pass (dummy provider)",
     "AT-07": "pass",
     "AT-08": "pass (leases, stale lock/revision, immutable checks, second review, appeals)",
-    "AT-10": "partial: log/canary checks pass; traces/errors from real infrastructure not tested",
+    "AT-10": "partial: log canaries incl. evidence markers pass; real infrastructure telemetry not tested",
     "AT-11": "pass (fake transport + resolver; no live network delivery)",
     "AT-15": "pass (dummy messenger)",
     "AT-23": "pass",
     "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)",
-    "AT-12": "pass (synthetic; supplier invoice simulated)"
+    "AT-12": "pass (synthetic; supplier invoice simulated)",
+    "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)"
   },
   "verification": {
     "81686a7": {

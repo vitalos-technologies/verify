@@ -60,7 +60,7 @@ test("reviewer claims and decides a case; evidence stays unchanged", async ({ pa
   await expect(page.getByRole("button", { name: "Record decision" })).toBeVisible();
   await axe(page, "case-claimed");
   await page.getByLabel("Decline").check();
-  await page.getByLabel("Reason").fill("Liveness could not be confirmed");
+  await page.getByLabel("Reason", { exact: true }).fill("Liveness could not be confirmed");
   await page.getByRole("button", { name: "Record decision" }).click();
   await expect(page.locator(".meta .chip").first()).toHaveText("Declined");
   await expect(page.locator(".rows li", { hasText: "Liveness" }).locator(".chip")).toHaveText("inconclusive");
@@ -82,5 +82,8 @@ test("console screenshots", async ({ page }) => {
   await page.goto(`/app/cases/${sid}`);
   await page.getByRole("button", { name: "Claim" }).click();
   await expect(page.getByRole("button", { name: "Record decision" })).toBeVisible();
+  await page.getByLabel("Reason for viewing").fill("Reviewing liveness result");
+  await page.getByRole("button", { name: "View" }).first().click();
+  await expect(page.getByRole("img", { name: "Document" })).toBeVisible();
   await page.screenshot({ path: join(out!, "12-console-case.png"), fullPage: true });
 });

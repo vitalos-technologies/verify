@@ -9,7 +9,7 @@ from __future__ import annotations
 import signal
 import time
 
-from vv import deletion, events, webhooks
+from vv import deletion, events, evidence, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.log import log
@@ -25,14 +25,16 @@ class Worker:
         self.providers: dict[str, ProviderAdapter] = {}
         if settings.is_non_production:
             self.providers["dummy"] = DummyProvider(self.db, settings.dummy_provider_secret, settings.environment)
+        self.store = evidence.LocalSealedStore(settings.evidence_dir, settings.data_key)
         self.resolver = resolver
         self.transport = transport
 
     def run_once(self) -> dict[str, int]:
         steps = {
-            "provider_events": lambda: events.process_due_events(self.db, self.providers),
+            "provider_events": lambda: events.process_due_events(self.db, self.providers, store=self.store),
+            "evidence_expiry": lambda: evidence.expire(self.db, self.store),
             "expired": lambda: events.expire_sessions(self.db),
-            "deletions": lambda: deletion.advance_deletions(self.db, self.providers),
+            "deletions": lambda: deletion.advance_deletions(self.db, self.providers, store=self.store),
             "dispatched": lambda: webhooks.dispatch_outbox(self.db),
             "deliveries": lambda: webhooks.deliver_due(self.db, self.settings.data_key, self.resolver,
                                                        self.transport),

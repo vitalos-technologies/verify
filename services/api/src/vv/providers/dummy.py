@@ -45,6 +45,12 @@ SCENARIOS: dict[str, list[tuple[str, str, tuple[str, ...]]]] = {
 OUTAGE_SCENARIO = "provider_outage"  # fetch_result raises ProviderUnavailable
 
 
+def _specimen(label: str) -> bytes:
+    """A synthetic placeholder image. Contains no person or document data."""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="100%" height="100%" '
+            f'fill="#eee"/><text x="16" y="104" font-family="sans-serif" font-size="16">{label}</text></svg>').encode()
+
+
 class DummyProvider:
     name = "dummy"
 
@@ -105,7 +111,10 @@ class DummyProvider:
                           score_type="dummy_fixed_0_1_uncalibrated", model_version=MODEL)
             for t, r, reasons in SCENARIOS[row["scenario"]]
         )
-        return Observation(f"obs_{provider_reference}", provider_reference, "completed", PROVIDER_VERSION, checks)
+        evidence = (("document_front", _specimen("SYNTHETIC DOCUMENT SPECIMEN"), "image/svg+xml"),
+                    ("selfie", _specimen("SYNTHETIC SELFIE PLACEHOLDER"), "image/svg+xml"))
+        return Observation(f"obs_{provider_reference}", provider_reference, "completed", PROVIDER_VERSION, checks,
+                           evidence)
 
     def request_deletion(self, provider_reference: str, *, correlation_id: str) -> str:
         with self.db.system_tx() as conn:

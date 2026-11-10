@@ -88,6 +88,8 @@ def main() -> None:
         print(json.dumps({"status": "ok"}))
     elif args.cmd == "replay-tombstones":
         from vv.deletion import replay_tombstones
-        print(json.dumps({"replayed": replay_tombstones(dsn)}))
+        from vv.evidence import LocalSealedStore
+        s = load_settings()
+        print(json.dumps({"replayed": replay_tombstones(dsn, LocalSealedStore(s.evidence_dir, s.data_key))}))
     elif args.cmd == "seed-dev":
         print(json.dumps(seed_dev(dsn), indent=2))

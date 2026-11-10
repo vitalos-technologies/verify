@@ -8,15 +8,17 @@ VV_ENV is development/test/ci.
 import os
 import time
 from dataclasses import dataclass
+from datetime import UTC
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response as RawResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, billing, deletion, events, review, service, webhooks
+from vv import auth, billing, deletion, events, evidence, review, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -103,6 +105,10 @@ class ReconcileRequest(Strict):
     lines: list[SupplierLine] = Field(max_length=100_000)
 
 
+class RevealRequest(Strict):
+    reason: str = Field(min_length=10, max_length=500)
+
+
 class LegalHoldRequest(Strict):
     subject_id: str
     owner: str = Field(min_length=3, max_length=200)
@@ -155,6 +161,7 @@ class AppState:
     providers: dict[str, ProviderAdapter]
     messenger: ap.DummyMessenger | None
     resolver: webhooks.Resolver
+    store: evidence.LocalSealedStore
 
 
 def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver | None = None) -> FastAPI:
@@ -165,7 +172,8 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         providers["dummy"] = DummyProvider(db, settings.dummy_provider_secret, settings.environment)
     state = AppState(settings, db, CoverageRegistry.load(settings.coverage_path), providers,
                      ap.DummyMessenger() if settings.is_non_production else None,
-                     resolver or webhooks.default_resolver)
+                     resolver or webhooks.default_resolver,
+                     evidence.LocalSealedStore(settings.evidence_dir, settings.data_key))
     app = FastAPI(title="Vitalos Verify API (prototype)", version="0.1.0", docs_url=None, redoc_url=None,
                   openapi_url="/openapi.json" if settings.is_non_production else None)
     app.state.vv = state
@@ -528,6 +536,43 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             return billing.reconcile_supplier(conn, principal.tenant_id, body.period,
                                               [x.model_dump() for x in body.lines])
 
+    # Evidence: list, purpose-bound reveal, expiring download, minimal export (VV-010, VV-024).
+    @app.get("/console/verifications/{session_id}/evidence")
+    def console_evidence(session_id: str, principal: Console):
+        principal.require("sessions:read")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            service.get_session(conn, principal.tenant_id, session_id)
+            return {"items": evidence.list_for_session(conn, principal.tenant_id, session_id)}
+
+    @app.post("/console/evidence/{evidence_id}/reveal")
+    def console_reveal(request: Request, evidence_id: str, principal: Console, body: RevealRequest):
+        with db.tenant_tx(principal.tenant_id) as conn:
+            role = conn.execute("SELECT role FROM memberships WHERE tenant_id = %s AND id = %s",
+                                (principal.tenant_id, principal.actor_id)).fetchone()["role"]
+            return evidence.reveal(conn, secret=settings.data_key, tenant_id=principal.tenant_id,
+                                   evidence_id=evidence_id, member=principal.actor_id, role=role,
+                                   reason=body.reason, request_id=request.state.request_id)
+
+    @app.get("/console/evidence/download")
+    def console_download(request: Request, token: str, principal: Console):
+        data, ctype = evidence.download(db, state.store, secret=settings.data_key, tenant_id=principal.tenant_id,
+                                        member=principal.actor_id, token=token, request_id=request.state.request_id)
+        csp = "default-src 'none'; style-src 'unsafe-inline'"
+        return RawResponse(data, media_type=ctype, headers={"Content-Disposition": "inline",
+                                                           "Content-Security-Policy": csp})
+
+    @app.get("/console/exports/verifications.csv")
+    def console_export(request: Request, principal: Console, period: str):
+        if not ({"sessions:read", "audit:read"} & principal.permissions):
+            raise ApiError(403, "forbidden", "This credential is not permitted to perform this action.")
+        billing._period(period)
+        with db.tenant_tx(principal.tenant_id) as conn:
+            body = evidence.export_csv(conn, principal.tenant_id, period)
+            service.audit(conn, principal.tenant_id, "console", principal.actor_id, "export.verifications", "export",
+                          period, request_id=request.state.request_id)
+        return RawResponse(body, media_type="text/csv", headers={
+            "Content-Disposition": f'attachment; filename="verifications-{period}.csv"'})
+
     @app.get("/console/me")
     def console_me(principal: Console):
         with db.tenant_tx(principal.tenant_id) as conn:
@@ -549,12 +594,12 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         principal.require("sessions:read")
         with db.tenant_tx(principal.tenant_id) as conn:
             service.get_session(conn, principal.tenant_id, session_id)
-            decisions = [{"at": r["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "decision",
+            decisions = [{"at": r["created_at"].astimezone(UTC).isoformat(), "kind": "decision",
                           "revision": r["revision"], "outcome": r["outcome"], "method": r["method"],
                           "actor_type": r["actor_type"], "reason_codes": list(r["reason_codes"])}
                          for r in conn.execute("SELECT * FROM decisions WHERE tenant_id = %s AND session_id = %s",
                                                (principal.tenant_id, session_id))]
-            events_ = [{"at": r["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "event",
+            events_ = [{"at": r["created_at"].astimezone(UTC).isoformat(), "kind": "event",
                         "type": r["event_type"], "state": r["payload"]["state"]}
                        for r in conn.execute("SELECT * FROM outbox WHERE tenant_id = %s AND resource_id = %s",
                                              (principal.tenant_id, session_id))]

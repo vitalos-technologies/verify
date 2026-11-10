@@ -28,6 +28,7 @@ class Settings:
     dummy_provider_secret: bytes
     hosted_base_url: str
     coverage_path: Path
+    evidence_dir: Path
     hosted_token_ttl_seconds: int = 72 * 3600
     applicant_session_ttl_seconds: int = 2 * 3600
     console_idle_seconds: int = 30 * 60
@@ -53,6 +54,15 @@ def _key(name: str, environment: str, dev_fallback: bytes) -> bytes:
     return key[:32]
 
 
+def _evidence_dir(environment: str) -> Path:
+    raw = _env("VV_EVIDENCE_DIR")
+    if raw:
+        return Path(raw)
+    if environment in _NON_PROD:
+        return SERVICE_ROOT / ".evidence-local"
+    raise RuntimeError("VV_EVIDENCE_DIR (or the private object store) must be configured outside development")
+
+
 def load_settings() -> Settings:
     environment = _env("VV_ENV", "development")
     if environment not in ENVIRONMENTS:
@@ -72,4 +82,5 @@ def load_settings() -> Settings:
         dummy_provider_secret=_key("VV_DUMMY_PROVIDER_SECRET", environment, b"dev-only-dummy-provider-secret!!"),
         hosted_base_url=_env("VV_HOSTED_BASE_URL", "http://localhost:8000") or "",
         coverage_path=Path(_env("VV_COVERAGE_PATH", str(SERVICE_ROOT / "config/coverage/registry.json")) or ""),
+        evidence_dir=_evidence_dir(environment),
     )

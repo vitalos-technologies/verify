@@ -19,12 +19,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [method, setMethod] = useState("evidence_review");
   const [reason, setReason] = useState("");
   const [summary, setSummary] = useState("");
+  const [evidence, setEvidence] = useState<{ id: string; kind: string; available: boolean }[]>([]);
+  const [why, setWhy] = useState("");
+  const [shown, setShown] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const [sv, t, m] = await Promise.all([
       con<Session>(`/verifications/${id}`), con<Timeline>(`/verifications/${id}/timeline`), con<{ membership_id: string }>("/me"),
     ]);
     setS(sv); setTl(t); setMe(m.membership_id);
+    setEvidence((await con<{ items: { id: string; kind: string; available: boolean }[] }>(`/verifications/${id}/evidence`)).items);
   }, [id]);
   useEffect(() => { load().catch(() => setError("Not found.")); }, [load]);
 
@@ -38,9 +42,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   const review = tl.review;
   const mine = review?.status === "claimed" && review.assignee === me;
-  const evidence = s.checks.filter((c) => !c.id.startsWith("chk_pending")).map((c) => c.id);
+  const checkIds = s.checks.filter((c) => !c.id.startsWith("chk_pending")).map((c) => c.id);
+  const view = (eid: string) => act(async () => {
+    const r = await con<{ download_path: string }>(`/evidence/${eid}/reveal`, { reason: why });
+    setShown((x) => ({ ...x, [eid]: r.download_path }));
+  }, "Access logged");
   const decide = () => act(() => con(`/reviews/${review!.id}/decision`, {
-    expected_revision: s.revision, outcome, method, reason, evidence_ids: evidence, lock_version: review!.lock_version,
+    expected_revision: s.revision, outcome, method, reason, evidence_ids: checkIds, lock_version: review!.lock_version,
   }), method === "alternative_method" && outcome === "approved" ? "Sent for second review" : "Decision recorded");
   const appeal = tl.appeal;
 
@@ -68,6 +76,25 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               </li>
             ))}
           </ul>
+
+          {evidence.length > 0 && (<>
+            <h2>Evidence</h2>
+            {Object.keys(shown).length === 0 && evidence.some((e) => e.available) && (<>
+              <label htmlFor="why">Reason for viewing</label>
+              <input id="why" type="text" value={why} onChange={(e) => setWhy(e.target.value)} />
+            </>)}
+            <ul className="rows">
+              {evidence.map((e) => (
+                <li key={e.id}>
+                  <span>{e.kind === "selfie" ? "Selfie" : "Document"}</span>
+                  {!e.available ? <span className="muted">Deleted</span> : shown[e.id]
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={shown[e.id]} alt={e.kind === "selfie" ? "Selfie" : "Document"} style={{ maxWidth: 240 }} />
+                    : <button className="btn secondary inline" disabled={why.trim().length < 10} onClick={() => view(e.id)}>View</button>}
+                </li>
+              ))}
+            </ul>
+          </>)}
 
           <h2>Timeline</h2>
           <ul className="rows">
@@ -125,7 +152,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
             <textarea id="ar" value={reason} onChange={(e) => setReason(e.target.value)} />
             {[["approved", "Approve (alternative method)", "alternative_method"], ["declined", "Uphold decline", "evidence_review"]].map(([o, l, m]) => (
               <button key={o} className={o === "approved" ? "btn" : "btn secondary"} disabled={reason.trim().length < 10}
-                onClick={() => act(() => con(`/appeals/${appeal.id}/resolve`, { expected_revision: s.revision, outcome: o, method: m, reason, evidence_ids: evidence }), "Appeal resolved")}>{l}</button>
+                onClick={() => act(() => con(`/appeals/${appeal.id}/resolve`, { expected_revision: s.revision, outcome: o, method: m, reason, evidence_ids: checkIds }), "Appeal resolved")}>{l}</button>
             ))}
           </>)}
         </section>

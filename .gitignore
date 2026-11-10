@@ -8,3 +8,4 @@ __pycache__/
 !.env.example
 evidence/private/
 *.local.json
+.evidence-local/

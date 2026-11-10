@@ -43,6 +43,7 @@ class Observation:
     status: str  # 'completed' | 'pending'
     provider_version: str
     checks: tuple[ObservedCheck, ...]
+    evidence: tuple[tuple[str, bytes, str], ...] = ()  # (kind, bytes, content_type) when retention is required
 
 
 class ProviderAdapter(Protocol):
