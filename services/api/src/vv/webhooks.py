@@ -53,15 +53,19 @@ def _is_public(ip: str) -> bool:
 
 def validate_destination(url: str, resolver: Resolver) -> tuple[str, int, str, str]:
     """Returns (host, port, path, pinned_ip) or raises UnsafeDestination."""
-    parts = urlsplit(url)
-    if parts.scheme != "https" or not parts.hostname:
+    try:
+        parts = urlsplit(url)
+        port = parts.port or 443
+        hostname = parts.hostname
+    except ValueError:
+        raise UnsafeDestination("malformed URL") from None
+    if parts.scheme != "https" or not hostname:
         raise UnsafeDestination("HTTPS URL required")
     if parts.username or parts.password:
         raise UnsafeDestination("credentials in URL not allowed")
-    host = parts.hostname.lower()
+    host = hostname.lower().rstrip(".")
     if host == "localhost" or host.endswith(".localhost") or host.endswith(".internal") or host.endswith(".local"):
         raise UnsafeDestination("internal hostname")
-    port = parts.port or 443
     try:
         literal = ipaddress.ip_address(host)
         ips = [str(literal)]

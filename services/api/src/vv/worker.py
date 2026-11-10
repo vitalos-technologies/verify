@@ -29,13 +29,22 @@ class Worker:
         self.transport = transport
 
     def run_once(self) -> dict[str, int]:
-        return {
-            "provider_events": events.process_due_events(self.db, self.providers),
-            "expired": events.expire_sessions(self.db),
-            "deletions": deletion.advance_deletions(self.db, self.providers),
-            "dispatched": webhooks.dispatch_outbox(self.db),
-            "deliveries": webhooks.deliver_due(self.db, self.settings.data_key, self.resolver, self.transport),
+        steps = {
+            "provider_events": lambda: events.process_due_events(self.db, self.providers),
+            "expired": lambda: events.expire_sessions(self.db),
+            "deletions": lambda: deletion.advance_deletions(self.db, self.providers),
+            "dispatched": lambda: webhooks.dispatch_outbox(self.db),
+            "deliveries": lambda: webhooks.deliver_due(self.db, self.settings.data_key, self.resolver,
+                                                       self.transport),
         }
+        counts: dict[str, int] = {}
+        for name, step in steps.items():  # each step isolated: one failure cannot starve the others (D1)
+            try:
+                counts[name] = step()
+            except Exception as exc:  # noqa: BLE001
+                log("worker.step_failed", operation=name, error_type=type(exc).__name__)
+                counts[name] = 0
+        return counts
 
     def close(self) -> None:
         self.db.close()

@@ -13,20 +13,13 @@ type Problem = { field?: string; message: string };
 type Fatal = "invalid" | "session_ended" | null;
 
 const DOC_LABEL: Record<string, string> = { passport: "passport", driving_licence: "driving licence" };
-const STEP_LABEL: Record<string, string> = {
-  government_id: "Photo of your identity document",
-  face_match: "A selfie to compare with the document photo",
-  liveness: "A short live check that you are present",
-  email: "A code sent to your email address",
-  phone: "A code sent to your phone",
-};
 const SCENARIOS: [string, string][] = [
-  ["all_pass", "All checks pass"],
-  ["low_quality", "Blurry document photo (asks to retry)"],
-  ["liveness_inconclusive", "Liveness inconclusive (goes to review)"],
-  ["face_no_match", "Face does not match (goes to review)"],
+  ["all_pass", "All pass"],
+  ["low_quality", "Blurry photo"],
+  ["liveness_inconclusive", "Liveness unclear"],
+  ["face_no_match", "Face mismatch"],
   ["document_expired", "Expired document"],
-  ["provider_outage", "Provider outage (delayed)"],
+  ["provider_outage", "Provider outage"],
 ];
 
 export default function Journey({ mode, token }: { mode: Mode; token?: string }) {
@@ -114,19 +107,19 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
   }
 
   const acknowledge = () => run(async () => {
-    if (!noticeRead) { setProblems([{ field: "notice-read", message: "Confirm that you have read the privacy notice." }]); return; }
+    if (!noticeRead) { setProblems([{ field: "notice-read", message: "Tick the box to continue." }]); return; }
     setView(await call<ApplicantView>("/applicant/notice", { method: "POST", body: { notice_version: view!.notice_version } }));
   }, "notice-read");
 
   const sendCode = () => run(async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setProblems([{ field: "email", message: "Enter an email address in the correct format, like name@example.com." }]); return; }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setProblems([{ field: "email", message: "Enter a valid email." }]); return; }
     await call("/applicant/contact/send", { method: "POST", body: { channel: "email", destination: email } });
     setCodeSent(true);
-    setAnnounce("If the address is valid, a 6-digit code has been sent. It expires in 10 minutes.");
+    setAnnounce("Code sent.");
   }, "email");
 
   const verifyCode = () => run(async () => {
-    if (!/^\d{6}$/.test(code.trim())) { setProblems([{ field: "code", message: "Enter the 6-digit code from the email." }]); return; }
+    if (!/^\d{6}$/.test(code.trim())) { setProblems([{ field: "code", message: "Enter the 6-digit code." }]); return; }
     await call("/applicant/contact/verify", { method: "POST", body: { code: code.trim() } });
     setView(await call<ApplicantView>("/applicant/session"));
     setAnnounce("Email confirmed.");
@@ -150,7 +143,7 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
     const r = await call<{ handoff_token: string }>("/applicant/handoff", { method: "POST" });
     const url = `${window.location.origin}/h/${r.handoff_token}`;
     setHandoff({ url, qr: await QRCode.toDataURL(url, { margin: 1, width: 200 }) });
-    setAnnounce("A code to continue on your phone is shown. It works once and expires in 10 minutes.");
+    setAnnounce("QR code shown.");
   });
 
   const capture = () => run(async () => {
@@ -160,7 +153,7 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
     const v = await call<ApplicantView>(`/applicant/attempts/${attempt.attempt_id}/submitted`, { method: "POST" });
     setRetrying(false);
     setView(v);
-    setAnnounce("Submitted. We are checking your details.");
+    setAnnounce("Submitted.");
   });
 
   const org = view?.requesting_organisation ?? "The requesting organisation";
@@ -170,9 +163,9 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
 
   return (
     <main>
-      <p className="brand">Identity check{view ? ` for ${org}` : ""}</p>
+      <p className="brand">{view ? org : "Identity check"}</p>
       <p className="sr-only" aria-live="polite" role="status">{announce}</p>
-      {!online && <p className="banner" role="status">You are offline. Your progress is saved — reconnect to continue.</p>}
+      {!online && <p className="banner" role="status">Offline. Progress saved.</p>}
       {at >= 0 && (
         <ol className="steps" aria-label={`Step ${at + 1} of ${progress.length}`}>
           {progress.map((p, i) => <li key={p} data-done={i <= at} />)}
@@ -185,90 +178,78 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
         </div>
       )}
 
-      {step === "loading" && (<><h1 ref={heading} tabIndex={-1}>Loading your identity check</h1><div className="spinner" aria-hidden="true" /></>)}
+      {step === "loading" && (<><h1 ref={heading} tabIndex={-1}>Loading</h1><div className="spinner" aria-hidden="true" /></>)}
 
       {step === "invalid" && (<>
-        <h1 ref={heading} tabIndex={-1}>This link has expired or was already used</h1>
-        <p>For your security, each link works once. Ask the organisation that sent it for a new link.</p>
+        <h1 ref={heading} tabIndex={-1}>Link expired or already used</h1>
+        <p>Ask the sender for a new link.</p>
       </>)}
 
       {step === "session_ended" && (<>
-        <h1 ref={heading} tabIndex={-1}>Your session has ended</h1>
-        <p>Your progress is saved. Open the link you were sent again, or ask the organisation for a new one.</p>
+        <h1 ref={heading} tabIndex={-1}>Session ended</h1>
+        <p>Progress saved. Open your link again.</p>
       </>)}
 
       {step === "intro" && view && (<>
-        <h1 ref={heading} tabIndex={-1}>{org} has asked you to confirm your identity</h1>
-        <p>Purpose: {view.purpose.toLowerCase()}. This takes about 5 minutes.</p>
-        <div className="card">
-          <h2>You will need</h2>
-          <ul>
-            <li>Your {DOC_LABEL[view.document.type] ?? view.document.type}</li>
-            {required.map((s) => <li key={s}>{STEP_LABEL[s] ?? s}</li>)}
-          </ul>
-        </div>
-        <p className="muted">Complete this by {formatDate(view.expires_at)}.</p>
-        <p>{view.alternative_route}</p>
-        <button className="btn" onClick={() => setIntroDone(true)}>Continue</button>
+        <h1 ref={heading} tabIndex={-1}>Confirm your identity</h1>
+        <p className="muted">About 5 minutes · by {formatDate(view.expires_at)}</p>
+        <ul>
+          <li>Your {DOC_LABEL[view.document.type] ?? view.document.type}</li>
+          <li>A selfie</li>
+          {required.includes("email") && <li>Your email</li>}
+        </ul>
+        <button className="btn" onClick={() => setIntroDone(true)}>Start</button>
       </>)}
 
       {step === "notice" && view && (<>
-        <h1 ref={heading} tabIndex={-1}>How your information is used</h1>
-        <div className="card">
-          <p><strong>Placeholder notice ({view.notice_version}).</strong> The final wording will be approved by {org} as controller before any real use.</p>
-          <ul>
-            <li>{org} asked for this check to confirm your identity for onboarding.</li>
-            <li>Your document and selfie are checked by a specialist verification provider acting for {org}.</li>
-            <li>Images are kept only as long as {org}&apos;s retention policy allows, then deleted.</li>
-            <li>The result is one input to {org}&apos;s decision. It is not a right-to-work or background check.</li>
-            <li>You can ask {org} for another way to prove your identity, or to challenge a result.</li>
-          </ul>
-        </div>
+        <h1 ref={heading} tabIndex={-1}>Your data</h1>
+        <ul>
+          <li>Checked by a verification provider for {org}</li>
+          <li>Deleted after {org}&apos;s retention period</li>
+          <li>Not a right-to-work check</li>
+        </ul>
+        <p className="muted">Draft notice ({view.notice_version})</p>
         <label className="check" htmlFor="notice-read">
           <input id="notice-read" type="checkbox" checked={noticeRead} onChange={(e) => setNoticeRead(e.target.checked)}
             aria-invalid={problems.some((p) => p.field === "notice-read")} />
-          <span>I have read how my information will be used</span>
+          <span>I&apos;ve read this</span>
         </label>
         <button className="btn" onClick={acknowledge} disabled={busy}>Continue</button>
-        <p className="muted">Prefer not to continue online? {view.alternative_route}</p>
       </>)}
 
       {step === "email" && (<>
-        <h1 ref={heading} tabIndex={-1}>Confirm your email address</h1>
-        <p>This confirms you can receive email at this address. It does not prove who you are.</p>
-        <label htmlFor="email">Email address</label>
+        <h1 ref={heading} tabIndex={-1}>Confirm your email</h1>
+        <label htmlFor="email">Email</label>
         <input id="email" type="email" autoComplete="email" inputMode="email" value={email}
           onChange={(e) => setEmail(e.target.value)} aria-invalid={problems.some((p) => p.field === "email")}
           aria-describedby={problems.some((p) => p.field === "email") ? "email-error" : undefined} />
         {problems.some((p) => p.field === "email") && <p id="email-error" className="field-error">{problems.find((p) => p.field === "email")!.message}</p>}
-        <button className={codeSent ? "btn secondary" : "btn"} onClick={sendCode} disabled={busy}>{codeSent ? "Send a new code" : "Send code"}</button>
+        <button className={codeSent ? "btn secondary" : "btn"} onClick={sendCode} disabled={busy}>{codeSent ? "Resend code" : "Send code"}</button>
         {codeSent && (<>
-          <label htmlFor="code">6-digit code <span className="hint">Check your inbox and spam folder</span></label>
+          <label htmlFor="code">6-digit code</label>
           <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code}
             onChange={(e) => setCode(e.target.value)} aria-invalid={problems.some((p) => p.field === "code")} />
-          <button className="btn" onClick={verifyCode} disabled={busy}>Confirm code</button>
+          <button className="btn" onClick={verifyCode} disabled={busy}>Confirm</button>
         </>)}
       </>)}
 
       {step === "capture" && view && (<>
-        <h1 ref={heading} tabIndex={-1}>{retrying ? "Let's try that again" : "Check your document and face"}</h1>
-        {retrying && <p>We couldn&apos;t complete the last attempt. Use good light, avoid glare and keep the whole document in view.</p>}
-        <p>You&apos;ll photograph your {DOC_LABEL[view.document.type] ?? view.document.type}, then take a short selfie.</p>
+        <h1 ref={heading} tabIndex={-1}>{retrying ? "Try again" : "Document and selfie"}</h1>
+        {retrying && <p className="muted">Good light, no glare, whole document in view.</p>}
 
         {camera !== "ok" && (<>
-          <button className="btn" onClick={checkCamera} disabled={busy || camera === "checking"}>Use this device&apos;s camera</button>
+          <button className="btn" onClick={checkCamera} disabled={busy || camera === "checking"}>Use camera</button>
           {camera === "unavailable" && (
             <div className="card" role="region" aria-labelledby="no-camera">
-              <h2 id="no-camera">We couldn&apos;t use a camera on this device</h2>
-              <p>This is not a problem with your identity. You can allow camera access and try again, continue on your phone, or ask {org} for another way.</p>
+              <h2 id="no-camera">No camera available</h2>
+              <p>Not an issue with your identity. Allow camera access or use your phone.</p>
             </div>
           )}
         </>)}
 
         {camera === "ok" && (
           <fieldset className="card dev">
-            <legend>Synthetic test capture (development only)</legend>
-            <p className="muted">No real supplier is connected. Choose a synthetic outcome; no images are taken.</p>
+            <legend>Test capture (development only)</legend>
             {SCENARIOS.map(([value, label]) => (
               <label key={value} className="check" htmlFor={`sc-${value}`}>
                 <input type="radio" id={`sc-${value}`} name="scenario" value={value} checked={scenario === value} onChange={() => setScenario(value)} />
@@ -279,44 +260,41 @@ export default function Journey({ mode, token }: { mode: Mode; token?: string })
           </fieldset>
         )}
 
-        <h2>Other options</h2>
         {!handoff ? (
-          <button className="btn secondary" onClick={startHandoff} disabled={busy}>Continue on my phone instead</button>
+          <button className="btn secondary" onClick={startHandoff} disabled={busy}>Use my phone</button>
         ) : (
           <div className="card">
-            <p>Scan this code with your phone camera. It works once and expires in 10 minutes. You won&apos;t lose progress here.</p>
+            <p>Scan with your phone. Expires in 10 min.</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="qr" src={handoff.qr} alt="QR code to continue this identity check on your phone" />
-            <p className="muted">Or open this link on your phone: <span style={{ wordBreak: "break-all" }}>{handoff.url}</span></p>
+            <img className="qr" src={handoff.qr} alt="QR code to continue on your phone" />
+            <p className="muted" style={{ wordBreak: "break-all" }}>{handoff.url}</p>
           </div>
         )}
-        <p>{view.alternative_route}</p>
       </>)}
 
       {step === "processing" && (<>
-        <h1 ref={heading} tabIndex={-1}>Checking your details</h1>
+        <h1 ref={heading} tabIndex={-1}>Checking</h1>
         <div className="spinner" aria-hidden="true" />
-        <p>This usually takes under a minute, but can take longer. You can close this page — {org} will be told when it is finished.</p>
+        <p className="muted">You can close this page.</p>
       </>)}
 
       {step === "action_required" && (<>
-        <h1 ref={heading} tabIndex={-1}>We need you to try again</h1>
-        <p>We couldn&apos;t complete the check with what was submitted. This can happen because of lighting, glare or an unreadable photo.</p>
+        <h1 ref={heading} tabIndex={-1}>Please try again</h1>
+        <p className="muted">The photos couldn&apos;t be checked.</p>
         <button className="btn" onClick={() => { setRetrying(true); setCamera("unknown"); }}>Try again</button>
-        <p className="muted">If you can&apos;t complete this online: {view?.alternative_route}</p>
       </>)}
 
       {step === "completed" && (<>
-        <h1 ref={heading} tabIndex={-1}>Thank you — your check is complete</h1>
-        <p>{org} will let you know what happens next. If you have questions or want to challenge the result, contact {org}.</p>
+        <h1 ref={heading} tabIndex={-1}>Done</h1>
+        <p>{org} will be in touch.</p>
       </>)}
 
       {step === "expired" && (<>
-        <h1 ref={heading} tabIndex={-1}>This identity check is no longer available</h1>
-        <p>It has expired or was cancelled. Ask {org} for a new link if you still need to complete it.</p>
+        <h1 ref={heading} tabIndex={-1}>Link expired</h1>
+        <p>Ask {org} for a new one.</p>
       </>)}
 
-      <footer>Need help? Contact {org}. Identity checks are provided by Vitalos Verify on their behalf.</footer>
+      <footer>Can&apos;t do this online? Contact {view ? org : "the sender"}.</footer>
     </main>
   );
 }

@@ -111,6 +111,8 @@ def authenticate_console(db: Database, token: str | None, csrf: str | None, *, m
     if (row is None or row["revoked_at"] is not None or not row["membership_active"]
             or row["absolute_expires_at"] <= now or row["last_seen_at"] + timedelta(seconds=idle_seconds) <= now):
         raise unauthenticated()
+    if row["tenant_status"] == "suspended":
+        raise forbidden("This organisation is suspended.")
     if mutating and (not csrf or not crypto.constant_time_equal(row["csrf_hash"], crypto.token_hash(csrf))):
         raise ApiError(403, "csrf_failed", "Request could not be verified.")
     with db.tenant_tx(row["tenant_id"]) as conn:

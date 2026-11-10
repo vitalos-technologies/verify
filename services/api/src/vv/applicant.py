@@ -183,6 +183,8 @@ def mark_submitted(db: Database, ctx: ApplicantContext, attempt_id: str) -> dict
                          (ctx.tenant_id, attempt_id, ctx.session_id)).fetchone()
         if a is None:
             raise ApiError(404, "not_found", "Resource not found.")
+        if a["state"] not in ("capturing", "submitted", "completed"):
+            raise conflict("attempt_not_capturing", "Start the capture before submitting.")
         if a["state"] == "capturing":
             conn.execute("UPDATE attempts SET state = 'submitted' WHERE tenant_id = %s AND id = %s",
                          (ctx.tenant_id, attempt_id))
@@ -226,8 +228,11 @@ def normalise_destination(channel: str, destination: str) -> str:
     return digits
 
 
-def send_contact_code(db: Database, ctx: ApplicantContext, pepper: bytes, messenger: DummyMessenger,
+def send_contact_code(db: Database, ctx: ApplicantContext, pepper: bytes, messenger: DummyMessenger | None,
                       channel: str, destination: str) -> dict:
+    if messenger is None:
+        raise ApiError(503, "messaging_unavailable", "Codes cannot be sent right now. Contact the requesting "
+                       "organisation for the alternative route.")
     if channel != "email":
         raise ApiError(422, "channel_unsupported", "Phone verification is not enabled (no messaging supplier).")
     dest = normalise_destination(channel, destination)
@@ -276,7 +281,9 @@ def verify_contact_code(db: Database, ctx: ApplicantContext, pepper: bytes, code
     if not code or not code.isdigit() or len(code) != 6:
         raise bad
     with db.tenant_tx(ctx.tenant_id) as conn:
-        get_session(conn, ctx.tenant_id, ctx.session_id, for_update=True)
+        s = get_session(conn, ctx.tenant_id, ctx.session_id, for_update=True)
+        if s["state"] not in ACTIVE_FOR_CAPTURE:
+            raise conflict("session_not_active", "This verification cannot accept new evidence.")
         ch = conn.execute(
             "SELECT *, expires_at > now() AS live FROM contact_challenges WHERE tenant_id = %s AND session_id = %s "
             "ORDER BY created_at DESC LIMIT 1 FOR UPDATE", (ctx.tenant_id, ctx.session_id)).fetchone()

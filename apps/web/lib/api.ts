@@ -30,7 +30,7 @@ export async function call<T>(path: string, init?: { method?: string; body?: unk
       cache: "no-store",
     });
   } catch {
-    throw new ApiFailure(0, "offline", "We couldn't reach the service. Check your connection; your progress is saved.");
+    throw new ApiFailure(0, "offline", "Connection lost. Progress saved.");
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

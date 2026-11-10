@@ -1,7 +1,7 @@
 {
   "status": "passed",
   "scope": "Documentation/package structural validation only; application acceptance not run",
-  "checks_passed": 333,
+  "checks_passed": 334,
   "errors": [],
   "tasks": 60,
   "milestones": 15,

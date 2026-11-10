@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, deletion, events, service, webhooks
+from vv import auth, deletion, events, review, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -49,6 +49,7 @@ class ReviewDecision(Strict):
     reason: str = Field(min_length=10, max_length=1000)
     method: Literal["evidence_review", "alternative_method"]
     evidence_ids: list[str] = Field(min_length=1)
+    reviewer_reference: str | None = Field(default=None, max_length=128)
 
 
 class WebhookEndpointRequest(Strict):
@@ -65,6 +66,26 @@ class DeleteRequest(Strict):
     subject_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=3, max_length=1000)
     controller_authorisation_reference: str = Field(min_length=1, max_length=200)
+
+
+class ConsoleDecision(ReviewDecision):
+    lock_version: int = Field(ge=1)
+
+
+class SecondReview(Strict):
+    confirm: bool
+
+
+class AppealCreate(Strict):
+    summary: str = Field(min_length=10, max_length=2000)
+
+
+class AppealResolve(Strict):
+    expected_revision: int = Field(ge=1)
+    outcome: Literal["approved", "declined"]
+    reason: str = Field(min_length=10, max_length=1000)
+    method: Literal["evidence_review", "alternative_method"]
+    evidence_ids: list[str] = Field(min_length=1)
 
 
 class LegalHoldRequest(Strict):
@@ -117,7 +138,7 @@ class AppState:
     db: Database
     coverage: CoverageRegistry
     providers: dict[str, ProviderAdapter]
-    messenger: ap.DummyMessenger
+    messenger: ap.DummyMessenger | None
     resolver: webhooks.Resolver
 
 
@@ -127,7 +148,8 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
     providers: dict[str, ProviderAdapter] = {}
     if settings.is_non_production:
         providers["dummy"] = DummyProvider(db, settings.dummy_provider_secret, settings.environment)
-    state = AppState(settings, db, CoverageRegistry.load(settings.coverage_path), providers, ap.DummyMessenger(),
+    state = AppState(settings, db, CoverageRegistry.load(settings.coverage_path), providers,
+                     ap.DummyMessenger() if settings.is_non_production else None,
                      resolver or webhooks.default_resolver)
     app = FastAPI(title="Vitalos Verify API (prototype)", version="0.1.0", docs_url=None, redoc_url=None,
                   openapi_url="/openapi.json" if settings.is_non_production else None)
@@ -408,6 +430,55 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
             service.audit(conn, principal.tenant_id, "console", principal.actor_id, "legal_hold.place", "subject",
                           subj["id"], reason=body.reason, request_id=request.state.request_id)
         return respond(201, {"id": hold_id, "state": "active"})
+
+    # Review queue, leases, second review (VV-008).
+    @app.get("/console/reviews")
+    def console_review_queue(principal: Console, limit: int = 50):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.queue(conn, principal.tenant_id, limit)
+
+    @app.post("/console/reviews/{review_id}/claim")
+    def console_review_claim(review_id: str, principal: Console):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.claim(conn, principal.tenant_id, review_id, principal.actor_id)
+
+    @app.post("/console/reviews/{review_id}/decision")
+    def console_review_decide(request: Request, review_id: str, principal: Console, body: ConsoleDecision):
+        principal.require("decisions:write")
+        payload = body.model_dump(exclude={"lock_version"})
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.decide(conn, principal.tenant_id, review_id, principal.actor_id, payload,
+                                 body.lock_version, request.state.request_id)
+
+    @app.post("/console/reviews/{review_id}/second-review")
+    def console_second_review(request: Request, review_id: str, principal: Console, body: SecondReview):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.second_review(conn, principal.tenant_id, review_id, principal.actor_id, body.confirm,
+                                        request.state.request_id)
+
+    # Appeals: recorded by the requesting organisation on the applicant's behalf.
+    @app.post("/console/verifications/{session_id}/appeals")
+    def console_appeal_create(session_id: str, principal: Console, body: AppealCreate):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return respond(201, review.create_appeal(conn, principal.tenant_id, session_id, principal.actor_id,
+                                                     body.summary))
+
+    @app.post("/console/appeals/{appeal_id}/claim")
+    def console_appeal_claim(appeal_id: str, principal: Console):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.claim_appeal(conn, principal.tenant_id, appeal_id, principal.actor_id)
+
+    @app.post("/console/appeals/{appeal_id}/resolve")
+    def console_appeal_resolve(request: Request, appeal_id: str, principal: Console, body: AppealResolve):
+        principal.require("decisions:write")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return review.resolve_appeal(conn, principal.tenant_id, appeal_id, principal.actor_id,
+                                         body.model_dump(), request.state.request_id)
 
     @app.get("/console/verifications/{session_id}")
     def console_get_verification(session_id: str, principal: Console):

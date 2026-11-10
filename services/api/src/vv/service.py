@@ -20,8 +20,9 @@ TERMINAL = {"approved", "declined", "expired", "cancelled"}
 TRANSITIONS: dict[str, set[str]] = {
     "created": {"in_progress", "expired", "cancelled"},
     "in_progress": {"processing", "expired", "cancelled"},
-    "processing": {"approved", "declined", "review_required", "action_required", "error"},
-    "error": {"processing"},
+    # processing/error may expire only after the session deadline with no decision (IMP-13).
+    "processing": {"approved", "declined", "review_required", "action_required", "error", "expired"},
+    "error": {"processing", "expired"},
     "action_required": {"in_progress", "expired", "cancelled"},
     "review_required": {"approved", "declined", "action_required"},
 }
@@ -196,7 +197,15 @@ def session_view(conn, session: dict) -> dict:
             if c["provider_version"]:
                 item["provider_version"] = c["provider_version"]
             checks.append(item)
+    dec = conn.execute("SELECT revision, outcome, method, actor_type, reason_codes, created_at FROM decisions "
+                       "WHERE tenant_id = %s AND session_id = %s ORDER BY revision DESC LIMIT 1",
+                       (session["tenant_id"], session["id"])).fetchone()
+    decision = None if dec is None else {
+        "revision": dec["revision"], "outcome": dec["outcome"], "method": dec["method"],
+        "actor_type": dec["actor_type"], "reason_codes": list(dec["reason_codes"]),
+        "decided_at": _iso(dec["created_at"])}
     return {
+        "decision": decision,
         "id": session["id"], "external_reference": session["external_reference"], "state": session["state"],
         "revision": session["version"], "policy_id": session["policy_key"],
         "policy_version": session["policy_version"], "created_at": _iso(session["created_at"]),
@@ -333,12 +342,22 @@ def evaluate_and_record(conn, session: dict) -> tuple[dict, Evaluation]:
          json.dumps({"engine": ENGINE_VERSION, "policy_digest": policy["definition_digest"], "steps": result.trace}),
          revision - 1 if revision > 1 else None))
     session = transition(conn, session, result.session_state, result.reason_codes)
+    if session["state"] == "review_required":
+        conn.execute("INSERT INTO reviews (tenant_id, id, session_id, session_version, status) "
+                     "VALUES (%s,%s,%s,%s,'open') ON CONFLICT DO NOTHING",
+                     (session["tenant_id"], new_id("rev"), session["id"], session["version"]))
     return session, result
 
 
 def record_review_decision(conn, *, tenant_id: str, session_id: str, actor_id: str, body: dict,
-                           request_id: str) -> tuple[int, dict]:
+                           request_id: str, actor_kind: str = "api_key",
+                           second_reviewer: str | None = None) -> tuple[int, dict]:
     session = get_session(conn, tenant_id, session_id, for_update=True)
+    review = conn.execute("SELECT *, lease_expires_at > now() AS leased FROM reviews WHERE tenant_id = %s AND "
+                          "session_id = %s AND status <> 'closed' FOR UPDATE", (tenant_id, session_id)).fetchone()
+    if review and actor_kind == "api_key" and (review["status"] == "awaiting_second_review"
+                                               or (review["status"] == "claimed" and review["leased"])):
+        raise conflict("review_claimed", "A reviewer is currently working on this case.")
     if session["version"] != body["expected_revision"]:
         raise conflict("revision.stale", "The verification changed since you loaded it; reload and retry.")
     if session["state"] != "review_required":
@@ -366,9 +385,13 @@ def record_review_decision(conn, *, tenant_id: str, session_id: str, actor_id: s
         "supersedes_revision) VALUES (%s,%s,%s,%s,%s,'reviewer',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (tenant_id, new_id("dec"), session_id, revision, body["outcome"], actor_id, body["method"], reason_codes,
          body["reason"], policy["id"], policy["key"], policy["version"], body["evidence_ids"],
-         json.dumps({"review": {"failing_required_checks": failing, "expected_revision": body["expected_revision"]}}),
+         json.dumps({"review": {"failing_required_checks": failing, "expected_revision": body["expected_revision"],
+                                "actor_kind": actor_kind, "second_reviewer": second_reviewer,
+                                "reviewer_reference": body.get("reviewer_reference")}}),
          revision - 1 if revision > 1 else None))
     session = transition(conn, session, body["outcome"], reason_codes)
-    audit(conn, tenant_id, "api_key", actor_id, "decision.record", "session", session_id,
+    conn.execute("UPDATE reviews SET status = 'closed', closed_at = now(), lock_version = lock_version + 1 "
+                 "WHERE tenant_id = %s AND session_id = %s AND status <> 'closed'", (tenant_id, session_id))
+    audit(conn, tenant_id, actor_kind, actor_id, "decision.record", "session", session_id,
           reason=body["method"], request_id=request_id)
     return 200, session_view(conn, session)

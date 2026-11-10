@@ -50,41 +50,41 @@ async function heading(page: Page, text: RegExp) {
 
 async function throughEmail(page: Page) {
   await heading(page, /confirm your email/i);
-  await page.getByLabel("Email address").fill(`e2e.${Date.now()}.${++counter}@synthetic.example`);
+  await page.getByLabel("Email", { exact: true }).fill(`e2e.${Date.now()}.${++counter}@synthetic.example`);
   await press(page.getByRole("button", { name: "Send code" }));
-  await expect(page.getByRole("status").first()).toContainText("code has been sent");
+  await expect(page.getByRole("status").first()).toContainText("Code sent");
   const { code } = await (await fetch(`${API}/dev/last-contact-code`)).json();
   await page.getByLabel(/6-digit code/).fill(code);
-  await press(page.getByRole("button", { name: "Confirm code" }));
+  await press(page.getByRole("button", { name: "Confirm" }));
 }
 
 test("keyboard-only journey completes; token removed from URL; accessible at each step", async ({ page, browser }) => {
   const s = await createSession();
   await page.goto(s.path);
-  await heading(page, /has asked you to confirm your identity/);
+  await heading(page, /confirm your identity/i);
   await expect(page).toHaveURL(/\/v$/);
   await axe(page, "intro");
   await noHorizontalScroll(page);
-  await press(page.getByRole("button", { name: "Continue" }));
+  await press(page.getByRole("button", { name: "Start" }));
 
-  await heading(page, /how your information is used/i);
+  await heading(page, /your data/i);
   await press(page.getByRole("button", { name: "Continue" }));
-  await expect(page.getByRole("alert", { name: "There is a problem" })).toContainText("Confirm that you have read");
+  await expect(page.getByRole("alert", { name: "There is a problem" })).toContainText("Tick the box");
   await axe(page, "notice-error");
-  await press(page.getByLabel("I have read how my information will be used"), "Space");
+  await press(page.getByLabel("I've read this"), "Space");
   await press(page.getByRole("button", { name: "Continue" }));
 
   await throughEmail(page);
-  await heading(page, /check your document and face/i);
+  await heading(page, /document and selfie/i);
   await axe(page, "capture");
   await noHorizontalScroll(page);
-  await press(page.getByRole("button", { name: /use this device/i }));
-  await expect(page.getByRole("group", { name: /synthetic test capture/i })).toBeVisible();
+  await press(page.getByRole("button", { name: "Use camera" }));
+  await expect(page.getByRole("group", { name: /test capture/i })).toBeVisible();
   await press(page.getByRole("button", { name: "Submit" }));
 
-  await heading(page, /checking your details/i);
+  await heading(page, /^checking$/i);
   await axe(page, "processing");
-  await heading(page, /your check is complete/i);
+  await heading(page, /^done$/i);
   await axe(page, "completed");
   expect(await apiState(s.id)).toBe("approved");
 
@@ -92,7 +92,7 @@ test("keyboard-only journey completes; token removed from URL; accessible at eac
   const other = await browser.newContext();
   const p2 = await other.newPage();
   await p2.goto(s.path);
-  await expect(p2.getByRole("heading", { level: 1 })).toHaveText(/expired or was already used/);
+  await expect(p2.getByRole("heading", { level: 1 })).toHaveText(/expired or already used/i);
   await other.close();
 });
 
@@ -105,58 +105,58 @@ test("camera denied: alternative and handoff offered, no adverse outcome, same s
       });
     });
     await page.goto(s.path);
-    await press(page.getByRole("button", { name: "Continue" }));
-    await press(page.getByLabel("I have read how my information will be used"), "Space");
+    await press(page.getByRole("button", { name: "Start" }));
+    await press(page.getByLabel("I've read this"), "Space");
     await press(page.getByRole("button", { name: "Continue" }));
     await throughEmail(page);
-    await press(page.getByRole("button", { name: /use this device/i }));
-    await expect(page.getByRole("region", { name: /couldn.t use a camera/i })).toContainText("not a problem with your identity");
+    await press(page.getByRole("button", { name: "Use camera" }));
+    await expect(page.getByRole("region", { name: /no camera available/i })).toContainText("Not an issue with your identity");
     await axe(page, "camera-denied");
     expect(await apiState(s.id)).toBe("created"); // no fraud/decline from a device limitation
 
-    await press(page.getByRole("button", { name: /continue on my phone/i }));
+    await press(page.getByRole("button", { name: "Use my phone" }));
     const img = page.getByRole("img", { name: /QR code/ });
     await expect(img).toBeVisible();
     const link = (await page.locator("text=/\\/h\\/h_/").textContent())!.match(/https?:\/\/\S+/)![0];
     const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const phone = await phoneCtx.newPage();
     await phone.goto(link);
-    await heading(phone, /check your document and face/i); // notice + email already done on the first device
-    await press(phone.getByRole("button", { name: /use this device/i }));
+    await heading(phone, /document and selfie/i); // notice + email already done on the first device
+    await press(phone.getByRole("button", { name: "Use camera" }));
     await press(phone.getByRole("button", { name: "Submit" }));
-    await heading(phone, /your check is complete/i);
+    await heading(phone, /^done$/i);
     await phoneCtx.close();
   });
 
 test("retry after poor capture, then success", async ({ page }) => {
   const s = await createSession();
   await page.goto(s.path);
-  await press(page.getByRole("button", { name: "Continue" }));
-  await press(page.getByLabel("I have read how my information will be used"), "Space");
+  await press(page.getByRole("button", { name: "Start" }));
+  await press(page.getByLabel("I've read this"), "Space");
   await press(page.getByRole("button", { name: "Continue" }));
   await throughEmail(page);
-  await press(page.getByRole("button", { name: /use this device/i }));
-  await press(page.getByLabel(/blurry document photo/i), "Space");
+  await press(page.getByRole("button", { name: "Use camera" }));
+  await press(page.getByLabel("Blurry photo"), "Space");
   await press(page.getByRole("button", { name: "Submit" }));
-  await heading(page, /we need you to try again/i);
+  await heading(page, /please try again/i);
   await axe(page, "action-required");
   await press(page.getByRole("button", { name: "Try again" }));
-  await heading(page, /let.s try that again/i);
-  await press(page.getByRole("button", { name: /use this device/i }));
-  await press(page.getByLabel("All checks pass"), "Space");
+  await heading(page, /^try again$/i);
+  await press(page.getByRole("button", { name: "Use camera" }));
+  await press(page.getByLabel("All pass"), "Space");
   await press(page.getByRole("button", { name: "Submit" }));
-  await heading(page, /your check is complete/i);
+  await heading(page, /^done$/i);
   expect(await apiState(s.id)).toBe("approved");
 });
 
 test("invalid link and refresh keep server state", async ({ page }) => {
   await page.goto("/v/not-a-real-token");
-  await heading(page, /expired or was already used/);
+  await heading(page, /expired or already used/i);
   await axe(page, "invalid");
   const s = await createSession();
   await page.goto(s.path);
-  await press(page.getByRole("button", { name: "Continue" }));
-  await press(page.getByLabel("I have read how my information will be used"), "Space");
+  await press(page.getByRole("button", { name: "Start" }));
+  await press(page.getByLabel("I've read this"), "Space");
   await press(page.getByRole("button", { name: "Continue" }));
   await heading(page, /confirm your email/i);
   await page.reload(); // refreshing does not lose progress (server state)

@@ -15,3 +15,5 @@ Owner authority is required for spending, production changes, live identity coll
 - Runtime DB roles (`vv_app`, `vv_worker`) must never own tables or get BYPASSRLS. New tenant tables need `tenant_id`, composite keys and a `tenant_isolation` policy.
 - The DummyProvider and `ZZ` coverage are mocks; never describe them as real verification.
 - Record deviations from the spec in `docs/decisions.md`.
+- UI copy rule (owner instruction, 2026-11-10): minimal text. Short heading plus at most one short line per screen; no explanatory paragraphs or repeated information. Keep only what a user needs to act; the alternative route stays in the footer.
+- Send updated screenshots to the owner whenever UI changes.
