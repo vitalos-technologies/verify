@@ -18,6 +18,7 @@ dependencies = [
 vv-api = "vv.api.app:main"
 vv-worker = "vv.worker:main"
 vv-admin = "vv.admin:main"
+vv-security-smoke = "vv.security_smoke:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
