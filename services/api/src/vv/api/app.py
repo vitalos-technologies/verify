@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, deletion, events, review, service, webhooks
+from vv import auth, billing, deletion, events, review, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -86,6 +86,21 @@ class AppealResolve(Strict):
     reason: str = Field(min_length=10, max_length=1000)
     method: Literal["evidence_review", "alternative_method"]
     evidence_ids: list[str] = Field(min_length=1)
+
+
+class CreditRequest(Strict):
+    ledger_key: str = Field(max_length=200)
+    amount_minor: int = Field(gt=0)
+    reason: str = Field(min_length=5, max_length=500)
+
+
+class SupplierLine(Strict):
+    provider_reference: str = Field(max_length=200)
+
+
+class ReconcileRequest(Strict):
+    period: str
+    lines: list[SupplierLine] = Field(max_length=100_000)
 
 
 class LegalHoldRequest(Strict):
@@ -479,6 +494,39 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         with db.tenant_tx(principal.tenant_id) as conn:
             return review.resolve_appeal(conn, principal.tenant_id, appeal_id, principal.actor_id,
                                          body.model_dump(), request.state.request_id)
+
+    # Usage and billing (VV-012).
+    @app.get("/console/usage")
+    def console_usage(principal: Console, period: str):
+        principal.require("billing:manage")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return billing.summary(conn, principal.tenant_id, period)
+
+    @app.post("/console/usage/credits")
+    def console_credit(request: Request, principal: Console, body: CreditRequest):
+        principal.require("billing:manage")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            out = billing.add_credit(conn, principal.tenant_id, body.ledger_key, body.amount_minor, body.reason,
+                                     principal.actor_id)
+            service.audit(conn, principal.tenant_id, "console", principal.actor_id, "billing.credit", "usage_event",
+                          out["id"], reason=body.reason, request_id=request.state.request_id)
+        return respond(201, out)
+
+    @app.post("/console/invoices/{period}/issue")
+    def console_issue_invoice(request: Request, period: str, principal: Console):
+        principal.require("billing:manage")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            out = billing.issue_invoice(conn, principal.tenant_id, period, principal.actor_id)
+            service.audit(conn, principal.tenant_id, "console", principal.actor_id, "billing.invoice", "invoice",
+                          out["invoice_id"], request_id=request.state.request_id)
+        return respond(201, out)
+
+    @app.post("/console/usage/reconcile")
+    def console_reconcile(principal: Console, body: ReconcileRequest):
+        principal.require("billing:manage")
+        with db.tenant_tx(principal.tenant_id) as conn:
+            return billing.reconcile_supplier(conn, principal.tenant_id, body.period,
+                                              [x.model_dump() for x in body.lines])
 
     @app.get("/console/verifications/{session_id}")
     def console_get_verification(session_id: str, principal: Console):

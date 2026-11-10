@@ -309,6 +309,9 @@ def transition(conn, session: dict, to_state: str, reason_codes: list[str] | Non
         (to_state, session["tenant_id"], session["id"], session["version"])).fetchone()
     if row is None:
         raise conflict("revision.stale", "The verification changed; reload and retry.")
+    if to_state in ("approved", "declined"):
+        from vv.billing import charge_completion
+        charge_completion(conn, row)
     if emit_event and to_state in STATE_EVENTS:
         emit(conn, row["tenant_id"], STATE_EVENTS[to_state], row["id"], row["version"],
              {"state": to_state, "reason_codes": sorted(set(reason_codes or []))})

@@ -174,6 +174,22 @@
         "appeals: conflict-of-interest routing, ack/resolve due dates, evidence hold, appended decision revision + event"
       ],
       "gap": "API-key decisions do not enforce second review (customer-operated review UIs). Evidence masking/reveal not built (no evidence objects stored yet). No reviewer console UI yet."
+    },
+    "M06-T01": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/migrations/0006_billing.sql",
+        "services/api/src/vv/billing.py",
+        "services/api/tests/test_at12_billing.py"
+      ],
+      "done": [
+        "charge once per completed verification at reservation-frozen price",
+        "no charge for expired/cancelled/technical failure",
+        "append-only credits capped at original charge (concurrency-safe)",
+        "immutable invoices after period end",
+        "supplier reconciliation report"
+      ],
+      "gap": "Prices are hypotheses; no payment processor; supplier invoice import format is a placeholder until a supplier is contracted."
     }
   },
   "acceptance_scenarios": {
@@ -189,7 +205,8 @@
     "AT-11": "pass (fake transport + resolver; no live network delivery)",
     "AT-15": "pass (dummy messenger)",
     "AT-23": "pass",
-    "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)"
+    "AT-09": "pass (synthetic; restore simulated by rewriting rows then replaying tombstones; no real backup restore)",
+    "AT-12": "pass (synthetic; supplier invoice simulated)"
   },
   "verification": {
     "81686a7": {
