@@ -227,13 +227,12 @@
       "gap": "Logical restore on one host only. Production PITR, object-store restore, provider-state reconciliation and approved RPO/RTO need the real environment (M02-T04)."
     },
     "M06-T02": {
-      "status": "in_progress",
+      "status": "review",
       "evidence": [
-        "packages/verify-client (TS client: create/get, webhook verification, tenant binding, dedup, out-of-order handling, identity-only mapping)",
-        "packages/verify-client/test/client.test.ts",
-        "cross-language signature fixture checked by Python and TS"
+        "packages/verify-client",
+        "vitalos-technologies/workforce#401 (T081, ADR-022 accepted)"
       ],
-      "gap": "Vitalos Workforce repository is not attached to this session, so the client is not yet wired into Workforce. AT-13 end-to-end with real Workforce tenants not run."
+      "gap": "Awaiting Workforce CI and P4 verifier; owner sets VERIFY_* secrets and registers the webhook after merge."
     }
   },
   "acceptance_scenarios": {
@@ -290,5 +289,14 @@
       },
       "tests_adopted": "tests/test_verifier2_*.py (30)"
     }
+  },
+  "owner_decisions": {
+    "2026-11-10": [
+      "Workforce PR approved (opened as vitalos-technologies/workforce#401)",
+      "ADR-022 accepted",
+      "Evidence retention 30 days approved",
+      "Backup retention 35 days approved",
+      "Book a demo links to https://vitalos.co.uk"
+    ]
   }
 }

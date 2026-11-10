@@ -22,7 +22,7 @@ from vv.log import log
 from vv.providers.base import ProviderAdapter, ProviderUnavailable
 from vv.service import audit, emit, transition
 
-BACKUP_RETENTION_DAYS = 35  # 14_infrastructure proposal; must match the real backup policy
+BACKUP_RETENTION_DAYS = 35  # owner-approved (10 Nov 2026); must match the real backup policy once provisioned
 SUPPLIER_MAX_ATTEMPTS = 5
 CANCELLABLE = {"created", "in_progress", "action_required"}
 

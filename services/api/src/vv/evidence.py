@@ -22,7 +22,7 @@ from vv.errors import ApiError, forbidden, not_found
 from vv.ids import new_id
 from vv.service import audit
 
-RETENTION_DAYS = 30  # proposed pilot profile; needs controller ratification
+RETENTION_DAYS = 30  # owner-approved Vitalos default (10 Nov 2026); each customer controller ratifies in its DPA
 DOWNLOAD_TTL_SECONDS = 300
 REVEAL_ROLES = {"owner", "administrator", "reviewer"}
 
