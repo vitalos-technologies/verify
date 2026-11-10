@@ -262,12 +262,14 @@
       "gap": "Logical restore on one host only. Production PITR, object-store restore, provider-state reconciliation and approved RPO/RTO need the real environment (M02-T04)."
     },
     "M06-T02": {
-      "status": "review",
+      "status": "merged",
       "evidence": [
-        "packages/verify-client",
-        "vitalos-technologies/workforce#401 (T081, ADR-022 accepted)"
+        "vitalos-technologies/workforce#401 merged 2026-11-10 15:01 UTC (T081, ADR-022 accepted)",
+        "Workforce P4 independent verifier: PASS on cdc55df",
+        "packages/verify-client"
       ],
-      "gap": "Awaiting Workforce CI and P4 verifier; owner sets VERIFY_* secrets and registers the webhook after merge."
+      "follow_ups": "vitalos-technologies/workforce#404 (Verify call outside DB transaction, hosted-link origin check, ADR status)",
+      "gap": "Owner sets VERIFY_* secrets (incl. optional VERIFY_HOSTED_ORIGIN) and registers the Workforce webhook in Verify; Workforce portal UI not built; AT-13 end-to-end against live Verify pending deployment."
     },
     "M05-T03": {
       "status": "in_progress",
@@ -302,7 +304,7 @@
     "AT-12": "pass (synthetic; supplier invoice simulated)",
     "AT-24": "pass (default export minimised, reveal reason-gated, member-bound 5-min link, revocation kills link, all audited)",
     "AT-14": "partial: isolated logical restore exercise passes (counts match, tombstones replayed, outbound disabled, copy destroyed); not production-equivalent",
-    "AT-13": "partial: client-level test with two tenants, out-of-order and duplicate events passes; Workforce wiring pending"
+    "AT-13": "partial: Workforce integration merged with two-tenant, out-of-order, duplicate and forged-event tests against a fake Verify; live end-to-end pending deployment"
   },
   "verification": {
     "81686a7": {
