@@ -5,36 +5,156 @@
     "M00": "not_met: needs founder evidence (interviews, segment, owners, cost cap)",
     "M01": "not_met: no supplier selected or contracted; privacy assessment plan not approved",
     "M02": "not_met: AT-01/AT-02 pass in CI-equivalent run, but OIDC/MFA (M02-T02) and environment baseline (M02-T04) are open",
-    "M03": "not_met: AT-03/AT-15/AT-23 pass; AT-04 not run (no applicant UI yet)",
+    "M03": "not_met: AT-03/AT-15/AT-23 pass; AT-04 automated portion passes, manual device/screen-reader testing outstanding",
     "M04": "not_met: AT-05/06/07/11 pass against the DUMMY provider only; no real supplier adapter"
   },
   "tasks": {
-    "M00-T01": {"status": "blocked", "reason": "External: founder to run 10 buyer/reviewer interviews."},
-    "M00-T02": {"status": "blocked", "reason": "External: depends on M00-T01 evidence."},
-    "M00-T03": {"status": "blocked", "reason": "External: three written pilot intents needed."},
-    "M00-T04": {"status": "blocked", "reason": "External: named owners and approved spending cap needed."},
-    "M01-T01": {"status": "blocked", "reason": "External: supplier RFI/quotes (Stripe Identity, Regula, Innovatrics, Yoti shortlisted; none contacted)."},
-    "M01-T02": {"status": "blocked", "reason": "External: contract, DPA and region review."},
-    "M01-T03": {"status": "implemented", "evidence": ["services/api/config/coverage/registry.json", "tests/test_units.py::test_registry_real_entries_default_disabled", "tests/test_at03_sessions.py::test_unsupported_scope_rejected_before_capture_or_charge"], "gap": "Real entries are placeholders (provider 'unselected', disabled) until M01-T01/T02 evidence exists."},
-    "M01-T04": {"status": "blocked", "reason": "External: sandbox access requires a selected supplier."},
-    "M02-T01": {"status": "implemented", "evidence": [".github/workflows/ci.yml", "services/api/uv.lock"], "gap": "Branch protection / required reviews must be enabled by a repo admin."},
-    "M02-T02": {"status": "in_progress", "evidence": ["tests/test_at02_revocation.py"], "done": ["membership roles", "scoped hashed API keys", "revocation", "console sessions with idle/absolute timeout and CSRF"], "gap": "OIDC provider not selected (dev-login stand-in, non-production only); MFA/step-up not implemented."},
-    "M02-T03": {"status": "implemented", "evidence": ["services/api/migrations/0001_foundation.sql", "tests/test_at01_isolation.py"], "gap": "Private evidence storage (S3) design not implemented: no evidence objects are stored yet."},
-    "M02-T04": {"status": "blocked", "reason": "External: cloud account and approved budget needed (no infrastructure provisioned)."},
-    "M03-T01": {"status": "implemented", "evidence": ["tests/test_at03_sessions.py", "tests/test_flow.py"]},
-    "M03-T02": {"status": "in_progress", "done": ["applicant API: token exchange, notice ack, attempts, status"], "gap": "No web UI, device handoff (QR) or capability checks yet; notice text is a synthetic placeholder."},
-    "M03-T03": {"status": "implemented", "evidence": ["tests/test_at15_contact.py"], "gap": "Email via DummyMessenger only; no messaging supplier; phone disabled."},
-    "M03-T04": {"status": "planned", "reason": "Needs M03-T02 UI."},
-    "M04-T01": {"status": "in_progress", "done": ["adapter contract", "DummyProvider (MOCK)", "authenticated callbacks + authoritative fetch"], "gap": "No real supplier adapter (blocked on M01)."},
-    "M04-T02": {"status": "implemented", "evidence": ["services/api/src/vv/domain/policy.py", "tests/test_units.py", "tests/test_flow.py::test_frozen_policy_version_and_reproducible_trace"]},
-    "M04-T03": {"status": "implemented", "evidence": ["services/api/src/vv/webhooks.py", "tests/test_at11_webhooks.py"]},
-    "M04-T04": {"status": "review", "evidence": ["tests/test_flow.py"], "gap": "Independent verifier report pending; real-adapter contract tests blocked on M01."}
+    "M00-T01": {
+      "status": "blocked",
+      "reason": "External: founder to run 10 buyer/reviewer interviews."
+    },
+    "M00-T02": {
+      "status": "blocked",
+      "reason": "External: depends on M00-T01 evidence."
+    },
+    "M00-T03": {
+      "status": "blocked",
+      "reason": "External: three written pilot intents needed."
+    },
+    "M00-T04": {
+      "status": "blocked",
+      "reason": "External: named owners and approved spending cap needed."
+    },
+    "M01-T01": {
+      "status": "blocked",
+      "reason": "External: supplier RFI/quotes (Stripe Identity, Regula, Innovatrics, Yoti shortlisted; none contacted)."
+    },
+    "M01-T02": {
+      "status": "blocked",
+      "reason": "External: contract, DPA and region review."
+    },
+    "M01-T03": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/config/coverage/registry.json",
+        "tests/test_units.py::test_registry_real_entries_default_disabled",
+        "tests/test_at03_sessions.py::test_unsupported_scope_rejected_before_capture_or_charge"
+      ],
+      "gap": "Real entries are placeholders (provider 'unselected', disabled) until M01-T01/T02 evidence exists."
+    },
+    "M01-T04": {
+      "status": "blocked",
+      "reason": "External: sandbox access requires a selected supplier."
+    },
+    "M02-T01": {
+      "status": "implemented",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "services/api/uv.lock",
+        "CI run 42766356508 success on 81686a7 (spec-pack + api jobs)"
+      ],
+      "gap": "Branch protection / required reviews must be enabled by a repo admin."
+    },
+    "M02-T02": {
+      "status": "in_progress",
+      "evidence": [
+        "tests/test_at02_revocation.py"
+      ],
+      "done": [
+        "membership roles",
+        "scoped hashed API keys",
+        "revocation",
+        "console sessions with idle/absolute timeout and CSRF"
+      ],
+      "gap": "OIDC provider not selected (dev-login stand-in, non-production only); MFA/step-up not implemented."
+    },
+    "M02-T03": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/migrations/0001_foundation.sql",
+        "tests/test_at01_isolation.py"
+      ],
+      "gap": "Private evidence storage (S3) design not implemented: no evidence objects are stored yet."
+    },
+    "M02-T04": {
+      "status": "blocked",
+      "reason": "External: cloud account and approved budget needed (no infrastructure provisioned)."
+    },
+    "M03-T01": {
+      "status": "implemented",
+      "evidence": [
+        "tests/test_at03_sessions.py",
+        "tests/test_flow.py"
+      ]
+    },
+    "M03-T02": {
+      "status": "implemented",
+      "evidence": [
+        "apps/web (Next.js 16.4.3)",
+        "services/api/migrations/0002_applicant_handoff.sql",
+        "services/api/tests/test_handoff.py",
+        "apps/web/e2e/applicant.spec.ts"
+      ],
+      "done": [
+        "mobile-first applicant flow: intro, notice ack, email OTP, capture, processing, retry, outcome, expired/invalid/session-ended/offline states",
+        "one-use token exchange then token removed from URL/history",
+        "camera capability check with non-adverse fallback",
+        "one-use 10-minute QR device handoff to the same session",
+        "alternative route shown on every step"
+      ],
+      "gap": "Capture is the DUMMY provider's synthetic panel; real supplier SDK not integrated. Notice wording is a placeholder pending controller approval. CSP still allows inline scripts (Next.js bootstrap); move to nonces before pilot. Design review with 5 applicants not done."
+    },
+    "M03-T03": {
+      "status": "implemented",
+      "evidence": [
+        "tests/test_at15_contact.py"
+      ],
+      "gap": "Email via DummyMessenger only; no messaging supplier; phone disabled."
+    },
+    "M03-T04": {
+      "status": "in_progress",
+      "evidence": [
+        "apps/web/e2e/applicant.spec.ts (8 tests: 390px and 320px, keyboard-only activation, focus moves to step heading, live-region announcements, axe WCAG 2.0/2.1/2.2 A/AA scan at each step, camera denied, invalid link, refresh)"
+      ],
+      "gap": "Automated checks only. Real screen-reader (VoiceOver/TalkBack), iOS Safari, Android Chrome, low-memory Android and 200% zoom manual tests not run."
+    },
+    "M04-T01": {
+      "status": "in_progress",
+      "done": [
+        "adapter contract",
+        "DummyProvider (MOCK)",
+        "authenticated callbacks + authoritative fetch"
+      ],
+      "gap": "No real supplier adapter (blocked on M01)."
+    },
+    "M04-T02": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/src/vv/domain/policy.py",
+        "tests/test_units.py",
+        "tests/test_flow.py::test_frozen_policy_version_and_reproducible_trace"
+      ]
+    },
+    "M04-T03": {
+      "status": "implemented",
+      "evidence": [
+        "services/api/src/vv/webhooks.py",
+        "tests/test_at11_webhooks.py"
+      ]
+    },
+    "M04-T04": {
+      "status": "review",
+      "evidence": [
+        "tests/test_flow.py"
+      ],
+      "gap": "Independent verifier report pending; real-adapter contract tests blocked on M01."
+    }
   },
   "acceptance_scenarios": {
     "AT-01": "pass (synthetic, local PostgreSQL 16)",
     "AT-02": "pass (API keys + console sessions; OIDC/MFA not in scope yet)",
     "AT-03": "pass",
-    "AT-04": "not_run",
+    "AT-04": "partial: automated (Chromium mobile emulation, keyboard, axe, camera-denied) pass; manual screen reader and real devices not run",
     "AT-05": "pass (dummy provider)",
     "AT-06": "pass (dummy provider)",
     "AT-07": "pass",

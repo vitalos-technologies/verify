@@ -64,3 +64,7 @@ def test_payloads_match_schemas(client, worker, make_tenant, settings):
                 client.get("/v1/verifications"),
                 client.post("/v1/verifications", json={"nope": 1}, headers={**t.headers, **idem()})):
         check(bad.json(), "Error")
+
+
+def test_dev_only_routes_not_exposed_by_default(client):
+    assert client.get("/dev/last-contact-code").status_code == 404

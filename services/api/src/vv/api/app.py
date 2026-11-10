@@ -5,6 +5,7 @@ VV_ENV is development/test/ci.
 """
 
 
+import os
 import time
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal
@@ -268,6 +269,18 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         with db.tenant_tx(ctx.tenant_id) as conn:
             return ap.applicant_view(conn, ctx)
 
+    @app.post("/applicant/handoff")
+    def applicant_handoff(ctx: Applicant):
+        with db.tenant_tx(ctx.tenant_id) as conn:
+            return respond(201, ap.create_handoff(conn, ctx))
+
+    @app.post("/applicant/handoff/exchange")
+    def applicant_handoff_exchange(body: ExchangeRequest, response: Response):
+        cookie, ctx = ap.exchange_handoff(db, body.token, settings.applicant_session_ttl_seconds)
+        set_cookie(response, APPLICANT_COOKIE, cookie, "/applicant", settings.applicant_session_ttl_seconds)
+        with db.tenant_tx(ctx.tenant_id) as conn:
+            return ap.applicant_view(conn, ctx)
+
     @app.get("/applicant/session")
     def applicant_session(ctx: Applicant):
         with db.tenant_tx(ctx.tenant_id) as conn:
@@ -372,6 +385,12 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                                                           settings.console_absolute_seconds)
             set_cookie(response, CONSOLE_COOKIE, token, "/console", settings.console_absolute_seconds)
             return {"csrf_token": csrf}
+
+        if os.environ.get("VV_DEV_EXPOSE_CODES") == "1":
+            @app.get("/dev/last-contact-code")
+            def dev_last_code():
+                """DEV/E2E ONLY (VV_DEV_EXPOSE_CODES=1, non-production): read the dummy messenger's last code."""
+                return {"code": state.messenger.last_sent}
 
         @app.post("/dummy-provider/capture")
         def dummy_capture(body: DummyCapture):

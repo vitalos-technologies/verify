@@ -21,7 +21,8 @@ Multi-tenant identity-verification platform (pre-pilot prototype).
 | Versioned immutable policies, fixture replay on publish, decision traces | VV-007 | Implemented |
 | Reviewer decisions with expected revision, alternative method | VV-008 (part) | Partial (no leases/appeals) |
 | Outbox, signed webhooks, retries, replay, SSRF/DNS-rebind protection | VV-011 | Implemented |
-| Deletion, usage billing, Workforce adapter, applicant web UI | VV-009, VV-012, VV-013, VV-004 | Not started |
+| Applicant web journey (Next.js): notice, email code, capture, retry, QR device handoff, alternative route | VV-004 | Implemented with dummy capture; automated a11y tests pass |
+| Deletion, usage billing, Workforce adapter | VV-009, VV-012, VV-013 | Not started |
 
 ## Run locally
 
@@ -47,10 +48,25 @@ curl -s -X POST localhost:8000/v1/verifications -H "Authorization: Bearer $KEY" 
   -d '{"external_reference":"worker-1","policy_id":"workforce_identity","policy_version":1,"country":"ZZ","document_type":"passport"}'
 ```
 
+Applicant web app (separate terminal):
+
+```bash
+cd apps/web && npm install && VV_ENABLE_DUMMY_PROVIDER=1 npm run dev
+```
+
+Open the `hosted_url` from the create response, replacing `localhost:8000` with `localhost:3000`
+(set `VV_HOSTED_BASE_URL=http://localhost:3000` in `.env` to get the right link directly).
+
 ## Test
 
 ```bash
 cd services/api && uv run pytest
+```
+
+Browser tests (start their own isolated API, worker and web server on `vv_e2e`):
+
+```bash
+cd apps/web && npm run build:e2e && npm run test:e2e
 ```
 
 Tests use a real PostgreSQL database (`vv_test`, see `scripts/init-db.sql`) and run as the non-owner runtime roles, so row-level security is exercised. Test modules are named after acceptance scenarios (AT-01, AT-02, …).

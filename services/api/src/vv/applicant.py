@@ -297,3 +297,48 @@ def verify_contact_code(db: Database, ctx: ApplicantContext, pepper: bytes, code
             (ctx.tenant_id, new_id("chk"), ctx.session_id, ch["channel"], ["contact.control_confirmed"], ch["id"]))
     return {"status": "verified", "channel": ch["channel"],
             "note": "Confirms control of this contact address only; it is not proof of identity."}
+
+
+# ------------------------------------------------------------------ device handoff (M03-T02)
+HANDOFF_TTL_SECONDS = 600
+MAX_ACTIVE_HANDOFFS = 3
+
+
+def create_handoff(conn, ctx: ApplicantContext) -> dict:
+    s = get_session(conn, ctx.tenant_id, ctx.session_id, for_update=True)
+    if s["state"] not in ACTIVE_FOR_CAPTURE:
+        raise conflict("session_not_active", "This verification cannot continue on another device.")
+    live = conn.execute("SELECT count(*) AS n FROM applicant_handoffs WHERE tenant_id = %s AND session_id = %s "
+                        "AND used_at IS NULL AND expires_at > now()", (ctx.tenant_id, ctx.session_id)).fetchone()["n"]
+    if live >= MAX_ACTIVE_HANDOFFS:
+        raise TOO_MANY
+    token = "h_" + crypto.random_token(24)
+    conn.execute("INSERT INTO applicant_handoffs (tenant_id, id, session_id, token_hash, expires_at) "
+                 "VALUES (%s,%s,%s,%s, now() + make_interval(secs => %s))",
+                 (ctx.tenant_id, new_id("hof"), ctx.session_id, crypto.token_hash(token), HANDOFF_TTL_SECONDS))
+    audit(conn, ctx.tenant_id, "applicant", ctx.session_id, "handoff.created", "session", ctx.session_id)
+    return {"handoff_token": token, "expires_in": HANDOFF_TTL_SECONDS}
+
+
+def exchange_handoff(db: Database, token: str, ttl_seconds: int) -> tuple[str, ApplicantContext]:
+    if not token or not token.startswith("h_") or len(token) > 200:
+        raise LINK_INVALID
+    with db.system_tx() as conn:
+        hit = conn.execute("SELECT * FROM vv_lookup_handoff(%s)", (crypto.token_hash(token),)).fetchone()
+    if hit is None:
+        raise LINK_INVALID
+    with db.tenant_tx(hit["tenant_id"]) as conn:
+        s = get_session(conn, hit["tenant_id"], hit["session_id"], for_update=True)
+        used = conn.execute(
+            "UPDATE applicant_handoffs SET used_at = now() WHERE tenant_id = %s AND id = %s AND used_at IS NULL "
+            "AND expires_at > now() RETURNING id", (hit["tenant_id"], hit["id"])).fetchone()
+        live = conn.execute("SELECT %s::timestamptz > now() AS ok", (s["expires_at"],)).fetchone()["ok"]
+        if used is None or not live or s["state"] not in ACTIVE_FOR_CAPTURE:
+            raise LINK_INVALID
+        cookie = crypto.random_token(32)
+        conn.execute(
+            "INSERT INTO applicant_sessions (tenant_id, id, session_id, token_hash, expires_at) "
+            "VALUES (%s,%s,%s,%s, least(now() + make_interval(secs => %s), %s))",
+            (s["tenant_id"], new_id("apps"), s["id"], crypto.token_hash(cookie), ttl_seconds, s["expires_at"]))
+        audit(conn, s["tenant_id"], "applicant", s["id"], "handoff.exchanged", "session", s["id"])
+    return cookie, ApplicantContext(hit["tenant_id"], hit["session_id"])
