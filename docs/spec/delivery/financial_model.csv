@@ -1,0 +1,15 @@
+metric,value,unit,classification
+completed_verifications,1000,checks,assumption
+platform_revenue,99,GBP,pricing hypothesis
+unit_revenue,2.5,GBP/check,pricing hypothesis
+supplier_unit_cost,1.25,GBP/check,"public benchmark, reconfirm"
+review_rate,0.1,fraction,assumption
+review_minutes,4,minutes/case,assumption
+review_hourly_cost,20,GBP/hour,assumption
+messaging,30,GBP/month,assumption
+variable_infrastructure,150,GBP/month,assumption
+variable_support,100,GBP/month,assumption
+revenue,2599,GBP/month,calculated
+supplier_cost,1250,GBP/month,calculated
+review_cost,133.333333,GBP/month,calculated
+contribution,935.666667,GBP/month,calculated before omitted costs

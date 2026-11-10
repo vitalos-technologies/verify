@@ -1,0 +1,3 @@
+# Independent verification prompt
+
+Read the task acceptance, linked specification and actual diff. Reproduce meaningful positive/negative tests instead of trusting the implementer's summary. Check tenant isolation, event idempotency, evidence lifecycle and missing/error behaviour where relevant. Distinguish real provider integration from a dummy. Review privacy/security impact and external evidence needed. Report pass, fail or blocked for each acceptance criterion with observed evidence. Do not edit away a failing criterion. Agent verification is not a substitute for legal advice or specialist biometric assessment.

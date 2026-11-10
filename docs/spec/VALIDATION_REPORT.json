@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "scope": "Documentation/package structural validation only; application acceptance not run",
+  "checks_passed": 333,
+  "errors": [],
+  "tasks": 60,
+  "milestones": 15,
+  "acceptance_scenarios": 24,
+  "api_operations": 8
+}

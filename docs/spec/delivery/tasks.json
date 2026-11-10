@@ -1,0 +1,1323 @@
+{
+  "version": "1.0",
+  "tasks": [
+    {
+      "id": "M00-T01",
+      "milestone": "M00",
+      "title": "Discovery interviews",
+      "status": "planned",
+      "owner_role": "Founder/product",
+      "depends_on": [],
+      "spec": "01_strategy.md",
+      "description": "Interview ten buyers/reviewers; quantify baseline volume, handling time, drop-off and price sensitivity.",
+      "acceptance": [
+        "Interview ten buyers/reviewers; quantify baseline volume, handling time, drop-off and price sensitivity.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M00-T02",
+      "milestone": "M00",
+      "title": "Scope and claims",
+      "status": "planned",
+      "owner_role": "Founder/product",
+      "depends_on": [
+        "M00-T01"
+      ],
+      "spec": "01_strategy.md",
+      "description": "Publish initial purpose, adult population, country/document candidates and excluded scheme claims.",
+      "acceptance": [
+        "Publish initial purpose, adult population, country/document candidates and excluded scheme claims.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M00-T03",
+      "milestone": "M00",
+      "title": "Pilot commitments",
+      "status": "planned",
+      "owner_role": "Founder/product",
+      "depends_on": [
+        "M00-T02"
+      ],
+      "spec": "01_strategy.md",
+      "description": "Obtain three written pilot intents or document a stop/pivot decision with evidence.",
+      "acceptance": [
+        "Obtain three written pilot intents or document a stop/pivot decision with evidence.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M00-T04",
+      "milestone": "M00",
+      "title": "Accountability and budget",
+      "status": "planned",
+      "owner_role": "Founder/product",
+      "depends_on": [
+        "M00-T03"
+      ],
+      "spec": "01_strategy.md",
+      "description": "Name owners and approve actual spending caps, repository and provider procurement budget.",
+      "acceptance": [
+        "Name owners and approve actual spending caps, repository and provider procurement budget.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M01-T01",
+      "milestone": "M01",
+      "title": "Supplier scorecard",
+      "status": "planned",
+      "owner_role": "Engineering/privacy",
+      "depends_on": [
+        "M00-T04"
+      ],
+      "spec": "08_provider_procurement.md",
+      "description": "Compare at least two credible routes using rights, evidence, coverage, region and complete cost.",
+      "acceptance": [
+        "Compare at least two credible routes using rights, evidence, coverage, region and complete cost.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M01-T02",
+      "milestone": "M01",
+      "title": "Contract and region review",
+      "status": "planned",
+      "owner_role": "Engineering/privacy",
+      "depends_on": [
+        "M01-T01"
+      ],
+      "spec": "08_provider_procurement.md",
+      "description": "Resolve platform rights, DPA, retention, deletion, support access and actual service locations.",
+      "acceptance": [
+        "Resolve platform rights, DPA, retention, deletion, support access and actual service locations.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M01-T03",
+      "milestone": "M01",
+      "title": "Coverage registry",
+      "status": "planned",
+      "owner_role": "Engineering/privacy",
+      "depends_on": [
+        "M01-T02"
+      ],
+      "spec": "08_provider_procurement.md",
+      "description": "Create versioned country/document/use-case matrix with default-disabled entries.",
+      "acceptance": [
+        "Create versioned country/document/use-case matrix with default-disabled entries.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M01-T04",
+      "milestone": "M01",
+      "title": "Sandbox and assessment plan",
+      "status": "planned",
+      "owner_role": "Engineering/privacy",
+      "depends_on": [
+        "M01-T03"
+      ],
+      "spec": "08_provider_procurement.md",
+      "description": "Obtain sandbox access and agree privacy/security/evaluation scope without real applicants.",
+      "acceptance": [
+        "Obtain sandbox access and agree privacy/security/evaluation scope without real applicants.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M02-T01",
+      "milestone": "M02",
+      "title": "Repository and CI",
+      "status": "planned",
+      "owner_role": "Engineering",
+      "depends_on": [
+        "M01-T04"
+      ],
+      "spec": "05_architecture.md",
+      "description": "Create monorepo, lock dependencies, run CI with synthetic fixtures and protected review workflow.",
+      "acceptance": [
+        "Create monorepo, lock dependencies, run CI with synthetic fixtures and protected review workflow.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M02-T02",
+      "milestone": "M02",
+      "title": "Tenancy and identity",
+      "status": "planned",
+      "owner_role": "Engineering",
+      "depends_on": [
+        "M02-T01"
+      ],
+      "spec": "05_architecture.md",
+      "description": "Implement OIDC, membership roles, MFA enforcement for privileged actions and scoped API keys.",
+      "acceptance": [
+        "Implement OIDC, membership roles, MFA enforcement for privileged actions and scoped API keys.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M02-T03",
+      "milestone": "M02",
+      "title": "Persistence boundaries",
+      "status": "planned",
+      "owner_role": "Engineering",
+      "depends_on": [
+        "M02-T02"
+      ],
+      "spec": "05_architecture.md",
+      "description": "Implement composite tenant references, runtime row isolation and private evidence access design.",
+      "acceptance": [
+        "Implement composite tenant references, runtime row isolation and private evidence access design.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M02-T04",
+      "milestone": "M02",
+      "title": "Environment baseline",
+      "status": "planned",
+      "owner_role": "Engineering",
+      "depends_on": [
+        "M02-T03"
+      ],
+      "spec": "05_architecture.md",
+      "description": "Provision approved non-production infrastructure with budget alarms and no production evidence.",
+      "acceptance": [
+        "Provision approved non-production infrastructure with budget alarms and no production evidence.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M03-T01",
+      "milestone": "M03",
+      "title": "Session API",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M02-T04"
+      ],
+      "spec": "04_user_experience.md",
+      "description": "Implement idempotency, expiry, scoped token exchange and attempt lifecycle.",
+      "acceptance": [
+        "Implement idempotency, expiry, scoped token exchange and attempt lifecycle.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M03-T02",
+      "milestone": "M03",
+      "title": "Applicant capture UX",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M03-T01"
+      ],
+      "spec": "04_user_experience.md",
+      "description": "Build mobile flow, versioned notice, capability checks, device handoff and alternative path.",
+      "acceptance": [
+        "Build mobile flow, versioned notice, capability checks, device handoff and alternative path.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M03-T03",
+      "milestone": "M03",
+      "title": "Contact verification",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M03-T02"
+      ],
+      "spec": "04_user_experience.md",
+      "description": "Implement OTP expiry, send limits, abuse protection and spend reservation.",
+      "acceptance": [
+        "Implement OTP expiry, send limits, abuse protection and spend reservation.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M03-T04",
+      "milestone": "M03",
+      "title": "Accessible journey validation",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M03-T03"
+      ],
+      "spec": "04_user_experience.md",
+      "description": "Test keyboard/screen reader/mobile/error states and unsupported documents before capture.",
+      "acceptance": [
+        "Test keyboard/screen reader/mobile/error states and unsupported documents before capture.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M04-T01",
+      "milestone": "M04",
+      "title": "Provider adapter",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M03-T04"
+      ],
+      "spec": "07_sessions_and_policy.md",
+      "description": "Implement session-bound ID, face and liveness checks with authenticated provider events.",
+      "acceptance": [
+        "Implement session-bound ID, face and liveness checks with authenticated provider events.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M04-T02",
+      "milestone": "M04",
+      "title": "Decision policy",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M04-T01"
+      ],
+      "spec": "07_sessions_and_policy.md",
+      "description": "Publish immutable pilot policy, explicit check outcomes and missing/error handling.",
+      "acceptance": [
+        "Publish immutable pilot policy, explicit check outcomes and missing/error handling.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M04-T03",
+      "milestone": "M04",
+      "title": "Event delivery",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M04-T02"
+      ],
+      "spec": "07_sessions_and_policy.md",
+      "description": "Implement outbox, signed webhooks, deduplication, replay protection and reconciliation.",
+      "acceptance": [
+        "Implement outbox, signed webhooks, deduplication, replay protection and reconciliation.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M04-T04",
+      "milestone": "M04",
+      "title": "Adapter and policy verification",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M04-T03"
+      ],
+      "spec": "07_sessions_and_policy.md",
+      "description": "Run negative fixtures for missing liveness, mismatch, duplicate/late callbacks and timeout.",
+      "acceptance": [
+        "Run negative fixtures for missing liveness, mismatch, duplicate/late callbacks and timeout.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M05-T01",
+      "milestone": "M05",
+      "title": "Review and appeals",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/security",
+      "depends_on": [
+        "M04-T04"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Implement assignment leases, revisioned decisions, alternatives, evidence masking and appeal flow.",
+      "acceptance": [
+        "Implement assignment leases, revisioned decisions, alternatives, evidence masking and appeal flow.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M05-T02",
+      "milestone": "M05",
+      "title": "Evidence deletion",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/security",
+      "depends_on": [
+        "M05-T01"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Implement primary/supplier deletion tracking, backup expiry and tombstone replay.",
+      "acceptance": [
+        "Implement primary/supplier deletion tracking, backup expiry and tombstone replay.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M05-T03",
+      "milestone": "M05",
+      "title": "Security assessment",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/security",
+      "depends_on": [
+        "M05-T02"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Test isolation, upload parsing, SSRF, privilege escalation, leakage and callback trust.",
+      "acceptance": [
+        "Test isolation, upload parsing, SSRF, privilege escalation, leakage and callback trust.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M05-T04",
+      "milestone": "M05",
+      "title": "Processing approval",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/security",
+      "depends_on": [
+        "M05-T03"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Complete factual DPIA, customer notices/contracts, retention and real-data approval records.",
+      "acceptance": [
+        "Complete factual DPIA, customer notices/contracts, retention and real-data approval records.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M06-T01",
+      "milestone": "M06",
+      "title": "Usage and billing",
+      "status": "planned",
+      "owner_role": "Founder/product/engineering",
+      "depends_on": [
+        "M05-T04"
+      ],
+      "spec": "17_launch_and_growth.md",
+      "description": "Implement commercial-version ledger, caps, reconciliation and credit handling in payment test mode first.",
+      "acceptance": [
+        "Implement commercial-version ledger, caps, reconciliation and credit handling in payment test mode first.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M06-T02",
+      "milestone": "M06",
+      "title": "Workforce adapter",
+      "status": "planned",
+      "owner_role": "Founder/product/engineering",
+      "depends_on": [
+        "M06-T01"
+      ],
+      "spec": "17_launch_and_growth.md",
+      "description": "Integrate via public tenant-scoped API; test signed events and employment/identity distinction.",
+      "acceptance": [
+        "Integrate via public tenant-scoped API; test signed events and employment/identity distinction.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M06-T03",
+      "milestone": "M06",
+      "title": "Pilot activation",
+      "status": "planned",
+      "owner_role": "Founder/product/engineering",
+      "depends_on": [
+        "M06-T02"
+      ],
+      "spec": "17_launch_and_growth.md",
+      "description": "Onboard allowlisted contracted tenants with small volume caps and staffed support.",
+      "acceptance": [
+        "Onboard allowlisted contracted tenants with small volume caps and staffed support.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M06-T04",
+      "milestone": "M06",
+      "title": "Pilot evaluation",
+      "status": "planned",
+      "owner_role": "Founder/product/engineering",
+      "depends_on": [
+        "M06-T03"
+      ],
+      "spec": "17_launch_and_growth.md",
+      "description": "Measure completion, reviews, cost, appeals and customer willingness to pay; record go/no-go.",
+      "acceptance": [
+        "Measure completion, reviews, cost, appeals and customer willingness to pay; record go/no-go.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M07-T01",
+      "milestone": "M07",
+      "title": "Independent assessment",
+      "status": "planned",
+      "owner_role": "Founder/security/operations",
+      "depends_on": [
+        "M06-T04"
+      ],
+      "spec": "18_operations_runbooks.md",
+      "description": "Complete external application test and relevant biometric integration evaluation; resolve high/critical findings.",
+      "acceptance": [
+        "Complete external application test and relevant biometric integration evaluation; resolve high/critical findings.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M07-T02",
+      "milestone": "M07",
+      "title": "Recovery exercise",
+      "status": "planned",
+      "owner_role": "Founder/security/operations",
+      "depends_on": [
+        "M07-T01"
+      ],
+      "spec": "18_operations_runbooks.md",
+      "description": "Prove restore, deletion tombstones, queue reconciliation and proposed RPO/RTO.",
+      "acceptance": [
+        "Prove restore, deletion tombstones, queue reconciliation and proposed RPO/RTO.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M07-T03",
+      "milestone": "M07",
+      "title": "Service readiness",
+      "status": "planned",
+      "owner_role": "Founder/security/operations",
+      "depends_on": [
+        "M07-T02"
+      ],
+      "spec": "18_operations_runbooks.md",
+      "description": "Establish support coverage, incident contact, SLOs, status communications and invoice operations.",
+      "acceptance": [
+        "Establish support coverage, incident contact, SLOs, status communications and invoice operations.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M07-T04",
+      "milestone": "M07",
+      "title": "Release decision",
+      "status": "planned",
+      "owner_role": "Founder/security/operations",
+      "depends_on": [
+        "M07-T03"
+      ],
+      "spec": "18_operations_runbooks.md",
+      "description": "Review complete release record, claims, pricing, supplier terms, rollback and signed launch decision.",
+      "acceptance": [
+        "Review complete release record, claims, pricing, supplier terms, rollback and signed launch decision.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M08-T01",
+      "milestone": "M08",
+      "title": "Document scope",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Select address documents, recency rules and lawful fields from customer demand.",
+      "acceptance": [
+        "Select address documents, recency rules and lawful fields from customer demand.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M08-T02",
+      "milestone": "M08",
+      "title": "Safe extraction",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M08-T01"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Implement quarantined upload, malware/content limits, sandbox parser and provenance.",
+      "acceptance": [
+        "Implement quarantined upload, malware/content limits, sandbox parser and provenance.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M08-T03",
+      "milestone": "M08",
+      "title": "Cross-check and review",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M08-T02"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Compare names/addresses/dates, preserve confidence and separate authenticity claims.",
+      "acceptance": [
+        "Compare names/addresses/dates, preserve confidence and separate authenticity claims.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M08-T04",
+      "milestone": "M08",
+      "title": "Module release",
+      "status": "planned",
+      "owner_role": "Product/engineering",
+      "depends_on": [
+        "M08-T03"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Test prompt injection, incorrect extraction and reviewer correction; approve privacy delta.",
+      "acceptance": [
+        "Test prompt injection, incorrect extraction and reviewer correction; approve privacy delta.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M09-T01",
+      "milestone": "M09",
+      "title": "Source contracts",
+      "status": "planned",
+      "owner_role": "Commercial/engineering/privacy",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Obtain permitted-purpose agreements and country/source coverage.",
+      "acceptance": [
+        "Obtain permitted-purpose agreements and country/source coverage.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M09-T02",
+      "milestone": "M09",
+      "title": "Matching adapter",
+      "status": "planned",
+      "owner_role": "Commercial/engineering/privacy",
+      "depends_on": [
+        "M09-T01"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Implement source provenance, freshness, partial/no-match/unavailable semantics.",
+      "acceptance": [
+        "Implement source provenance, freshness, partial/no-match/unavailable semantics.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M09-T03",
+      "milestone": "M09",
+      "title": "Policy integration",
+      "status": "planned",
+      "owner_role": "Commercial/engineering/privacy",
+      "depends_on": [
+        "M09-T02"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Route ambiguous matches to review, cap identifier collection and cost.",
+      "acceptance": [
+        "Route ambiguous matches to review, cap identifier collection and cost.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M09-T04",
+      "milestone": "M09",
+      "title": "Coverage validation",
+      "status": "planned",
+      "owner_role": "Commercial/engineering/privacy",
+      "depends_on": [
+        "M09-T03"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Test legitimate variations, stale records and outages before enabling each source.",
+      "acceptance": [
+        "Test legitimate variations, stale records and outages before enabling each source.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M10-T01",
+      "milestone": "M10",
+      "title": "Mobile capability design",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M08-T04"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Select native SDK, supported devices, documents and handoff flow.",
+      "acceptance": [
+        "Select native SDK, supported devices, documents and handoff flow.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M10-T02",
+      "milestone": "M10",
+      "title": "Chip authentication",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M10-T01"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Implement authenticated chip evidence and versioned trust-material validation.",
+      "acceptance": [
+        "Implement authenticated chip evidence and versioned trust-material validation.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M10-T03",
+      "milestone": "M10",
+      "title": "Portrait binding",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M10-T02"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Bind chip portrait to session selfie and record exact assurance method.",
+      "acceptance": [
+        "Bind chip portrait to session selfie and record exact assurance method.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M10-T04",
+      "milestone": "M10",
+      "title": "Device and attack evaluation",
+      "status": "planned",
+      "owner_role": "Engineering/assurance",
+      "depends_on": [
+        "M10-T03"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Test interrupted reads, invalid signatures, trust material and injection fixtures.",
+      "acceptance": [
+        "Test interrupted reads, invalid signatures, trust material and injection fixtures.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M11-T01",
+      "milestone": "M11",
+      "title": "Use-case assessment",
+      "status": "planned",
+      "owner_role": "Product/privacy/assurance",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "13_regulatory_and_assurance.md",
+      "description": "Define geography, service/age rule, minors processing and approved alternative routes.",
+      "acceptance": [
+        "Define geography, service/age rule, minors processing and approved alternative routes.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M11-T02",
+      "milestone": "M11",
+      "title": "Provider and threshold evaluation",
+      "status": "planned",
+      "owner_role": "Product/privacy/assurance",
+      "depends_on": [
+        "M11-T01"
+      ],
+      "spec": "13_regulatory_and_assurance.md",
+      "description": "Procure evaluated age/liveness checks and establish evidence-based challenge threshold.",
+      "acceptance": [
+        "Procure evaluated age/liveness checks and establish evidence-based challenge threshold.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M11-T03",
+      "milestone": "M11",
+      "title": "Minimal age assertion",
+      "status": "planned",
+      "owner_role": "Product/privacy/assurance",
+      "depends_on": [
+        "M11-T02"
+      ],
+      "spec": "13_regulatory_and_assurance.md",
+      "description": "Implement age-threshold result, short retention and separation from identity workflows.",
+      "acceptance": [
+        "Implement age-threshold result, short retention and separation from identity workflows.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M11-T04",
+      "milestone": "M11",
+      "title": "Effectiveness validation",
+      "status": "planned",
+      "owner_role": "Product/privacy/assurance",
+      "depends_on": [
+        "M11-T03"
+      ],
+      "spec": "13_regulatory_and_assurance.md",
+      "description": "Evaluate underage acceptance, adult rejection, fairness, robustness and fallback completion.",
+      "acceptance": [
+        "Evaluate underage acceptance, adult rejection, fairness, robustness and fallback completion.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M12-T01",
+      "milestone": "M12",
+      "title": "Scheme and protocol scope",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/assurance",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Select actual wallets/credentials, verifier obligations and current standards.",
+      "acceptance": [
+        "Select actual wallets/credentials, verifier obligations and current standards.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M12-T02",
+      "milestone": "M12",
+      "title": "Cryptographic verifier",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/assurance",
+      "depends_on": [
+        "M12-T01"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Implement issuer trust, signatures, holder binding, nonce, audience and validity.",
+      "acceptance": [
+        "Implement issuer trust, signatures, holder binding, nonce, audience and validity.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M12-T03",
+      "milestone": "M12",
+      "title": "Attribute and status controls",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/assurance",
+      "depends_on": [
+        "M12-T02"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Request minimal attributes and implement required status/revocation handling.",
+      "acceptance": [
+        "Request minimal attributes and implement required status/revocation handling.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M12-T04",
+      "milestone": "M12",
+      "title": "Interoperability assessment",
+      "status": "planned",
+      "owner_role": "Engineering/privacy/assurance",
+      "depends_on": [
+        "M12-T03"
+      ],
+      "spec": "09_verification_modules.md",
+      "description": "Test supported real scheme sandbox, replay/untrusted issuer failures and claim accuracy.",
+      "acceptance": [
+        "Test supported real scheme sandbox, replay/untrusted issuer failures and claim accuracy.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M13-T01",
+      "milestone": "M13",
+      "title": "Business and data case",
+      "status": "planned",
+      "owner_role": "Research/privacy/assurance",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "19_proprietary_R_and_D.md",
+      "description": "Choose component and establish economic thesis plus lawful dataset provenance.",
+      "acceptance": [
+        "Choose component and establish economic thesis plus lawful dataset provenance.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M13-T02",
+      "milestone": "M13",
+      "title": "Offline evaluation",
+      "status": "planned",
+      "owner_role": "Research/privacy/assurance",
+      "depends_on": [
+        "M13-T01"
+      ],
+      "spec": "19_proprietary_R_and_D.md",
+      "description": "Build subject-disjoint evaluation with locked holdout and explicit security floors.",
+      "acceptance": [
+        "Build subject-disjoint evaluation with locked holdout and explicit security floors.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M13-T03",
+      "milestone": "M13",
+      "title": "Shadow comparison",
+      "status": "planned",
+      "owner_role": "Research/privacy/assurance",
+      "depends_on": [
+        "M13-T02"
+      ],
+      "spec": "19_proprietary_R_and_D.md",
+      "description": "Run approved shadow evaluation with no decision influence and measured costs.",
+      "acceptance": [
+        "Run approved shadow evaluation with no decision influence and measured costs.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M13-T04",
+      "milestone": "M13",
+      "title": "Replacement decision",
+      "status": "planned",
+      "owner_role": "Research/privacy/assurance",
+      "depends_on": [
+        "M13-T03"
+      ],
+      "spec": "19_proprietary_R_and_D.md",
+      "description": "Approve limited rollout only after independent evidence; otherwise retain supplier baseline.",
+      "acceptance": [
+        "Approve limited rollout only after independent evidence; otherwise retain supplier baseline.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M14-T01",
+      "milestone": "M14",
+      "title": "Service staffing",
+      "status": "planned",
+      "owner_role": "Operations/commercial/privacy",
+      "depends_on": [
+        "M07-T04"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Define coverage, staffing, training, location and review quality responsibilities.",
+      "acceptance": [
+        "Define coverage, staffing, training, location and review quality responsibilities.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M14-T02",
+      "milestone": "M14",
+      "title": "Operator controls",
+      "status": "planned",
+      "owner_role": "Operations/commercial/privacy",
+      "depends_on": [
+        "M14-T01"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Implement scoped reviewer access, second review and quality sampling.",
+      "acceptance": [
+        "Implement scoped reviewer access, second review and quality sampling.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M14-T03",
+      "milestone": "M14",
+      "title": "Market and scheme readiness",
+      "status": "planned",
+      "owner_role": "Operations/commercial/privacy",
+      "depends_on": [
+        "M14-T02"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Assess new jurisdiction/scheme contracts, certificates and claim limits.",
+      "acceptance": [
+        "Assess new jurisdiction/scheme contracts, certificates and claim limits.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    },
+    {
+      "id": "M14-T04",
+      "milestone": "M14",
+      "title": "Service launch",
+      "status": "planned",
+      "owner_role": "Operations/commercial/privacy",
+      "depends_on": [
+        "M14-T03"
+      ],
+      "spec": "10_review_and_operations_console.md",
+      "description": "Run capped service pilot, verify SLA and economics and approve separate commercial package.",
+      "acceptance": [
+        "Run capped service pilot, verify SLA and economics and approve separate commercial package.",
+        "Provide redacted evidence and independently reviewed result; distinguish implemented from planned."
+      ],
+      "evidence_required": [
+        "review_record",
+        "test_or_assessment_artifact"
+      ],
+      "commit": null,
+      "reviewer": null
+    }
+  ]
+}

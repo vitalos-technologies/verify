@@ -1,0 +1,194 @@
+[
+  {
+    "id": "AT-01",
+    "requirement": "VV-001",
+    "title": "Cross-tenant isolation",
+    "procedure": "Create tenants A and B and objects in each. Attempt reads, writes, downloads, exports and queued work using A against B.",
+    "expected": "Deny access without object/PII leakage; no cross-tenant references persist.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-02",
+    "requirement": "VV-002",
+    "title": "Credential revocation",
+    "procedure": "Revoke a scoped key/membership and repeat sensitive commands, including an existing browser session.",
+    "expected": "Access denied within documented revocation window; audit reason recorded.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-03",
+    "requirement": "VV-003",
+    "title": "Creation idempotency",
+    "procedure": "Submit identical creation key/body concurrently; then reuse key with different body.",
+    "expected": "Same session and one reservation for identical requests; conflict for changed body.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-04",
+    "requirement": "VV-004",
+    "title": "Accessible capture",
+    "procedure": "Complete supported journey using small-screen mobile, keyboard and screen reader; deny camera access.",
+    "expected": "Usable guidance and alternative path; no false fraud result for device limitations.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-05",
+    "requirement": "VV-005",
+    "title": "Incomplete evidence",
+    "procedure": "Return ID pass and match pass but missing/inconclusive liveness.",
+    "expected": "No automatic approval; required check remains visible.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-06",
+    "requirement": "VV-006",
+    "title": "Forged callback",
+    "procedure": "Send invalid signature, expired signature and callback for another session; fire client SDK success.",
+    "expected": "No authoritative approval; invalid events rejected or quarantined.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-07",
+    "requirement": "VV-007",
+    "title": "Frozen policy",
+    "procedure": "Publish policy v2 while session bound to v1 processes; replay v1 evidence.",
+    "expected": "Original version used and reproducible trace retained.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-08",
+    "requirement": "VV-008",
+    "title": "Review concurrency",
+    "procedure": "Two reviewers act on same case revision; attempt to overwrite failed liveness.",
+    "expected": "Only valid revision wins; stale write conflicts; original check immutable.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-09",
+    "requirement": "VV-009",
+    "title": "Deletion lifecycle",
+    "procedure": "Delete subject, delay supplier completion, restore a backup containing old evidence.",
+    "expected": "Access blocked; state not complete prematurely; tombstone reapplied before restored service.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-10",
+    "requirement": "VV-010",
+    "title": "Telemetry leakage",
+    "procedure": "Use synthetic canary names/numbers/tokens in test evidence; scan logs/traces/errors.",
+    "expected": "No sensitive canaries or raw evidence in telemetry; access events retained.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-11",
+    "requirement": "VV-011",
+    "title": "Webhook retries",
+    "procedure": "Return 500 then 200; duplicate event; configure private IP endpoint and DNS-rebinding fixture.",
+    "expected": "Stable signed event ID, bounded retries, no duplicate effect and no private-network delivery.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-12",
+    "requirement": "VV-012",
+    "title": "Invoice integrity",
+    "procedure": "Reconcile duplicates, failed calls, retries, credit and supplier invoice to usage ledger.",
+    "expected": "Each charge accounted for; credit append-only; concurrent caps enforced.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-13",
+    "requirement": "VV-013",
+    "title": "Workforce integration",
+    "procedure": "Integrate two Workforce tenants and receive out-of-order outcome events.",
+    "expected": "Correct tenant and newest decision version; identity result never asserted as work eligibility.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-14",
+    "requirement": "VV-014",
+    "title": "Recovery",
+    "procedure": "Restore database/object references, replay deletion tombstones and reconcile queues in isolation.",
+    "expected": "Measured RPO/RTO meet approved targets; no unintended supplier calls or customer webhooks.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-15",
+    "requirement": "VV-015",
+    "title": "OTP abuse",
+    "procedure": "Repeated/concurrent sends, wrong code attempts, expired/reused code and spend cap reached.",
+    "expected": "Rate/cost limits hold; code single-use; contact result not legal identity.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-16",
+    "requirement": "VV-016",
+    "title": "Document extraction",
+    "procedure": "Submit inconsistent address/date, low-confidence text and malicious instructions embedded in a document.",
+    "expected": "Provenance/uncertainty shown; no privileged instruction execution; authenticity separate.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-17",
+    "requirement": "VV-017",
+    "title": "Database limitations",
+    "procedure": "Return no coverage, no match, partial and unavailable from source fixtures.",
+    "expected": "Distinct outcomes; no-match never automatically labels fraud.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-18",
+    "requirement": "VV-018",
+    "title": "Untrusted NFC",
+    "procedure": "Read valid-format chip payload with bad signature/untrusted issuer and interrupt capture.",
+    "expected": "Cannot claim authenticated chip identity; safe retry/fallback with retained reason.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-19",
+    "requirement": "VV-019",
+    "title": "Borderline age",
+    "procedure": "Run near-boundary evaluated cases, failed liveness and alternative-route cases.",
+    "expected": "Uncertainty/fallback policy applied; no exact-age claim; approved retention enforced.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-20",
+    "requirement": "VV-020",
+    "title": "Credential replay",
+    "procedure": "Use wrong nonce/audience, stale credential, untrusted issuer and replayed presentation.",
+    "expected": "Cryptographic/session failures rejected; only approved attributes returned.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-21",
+    "requirement": "VV-021",
+    "title": "R&D promotion",
+    "procedure": "Candidate has higher aggregate score but worse subgroup/security-floor results.",
+    "expected": "Promotion denied; baseline remains live; shadow never changes customer decisions.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-22",
+    "requirement": "VV-022",
+    "title": "Managed reviewer scope",
+    "procedure": "Reviewer attempts unassigned tenant export after access grant expiry.",
+    "expected": "Access denied and audited; second-review rules enforced.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-23",
+    "requirement": "VV-023",
+    "title": "Unsupported scope",
+    "procedure": "Request disabled country/document/provider region combination.",
+    "expected": "Reject before capture/charge; approved alternative described.",
+    "status": "not_run"
+  },
+  {
+    "id": "AT-24",
+    "requirement": "VV-024",
+    "title": "Export minimisation",
+    "procedure": "Default export then privileged evidence export; revoke user and retry link.",
+    "expected": "Default omits unnecessary PII; privileged access expires/revokes and is audited.",
+    "status": "not_run"
+  }
+]

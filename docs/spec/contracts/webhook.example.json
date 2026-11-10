@@ -1,0 +1,12 @@
+{
+  "id": "evt_synthetic_001",
+  "type": "verification.completed",
+  "occurred_at": "2026-11-10T12:00:00Z",
+  "tenant_reference": "tenant_synthetic",
+  "resource_id": "ver_synthetic_001",
+  "resource_version": 2,
+  "data": {
+    "state": "approved",
+    "reason_codes": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vitalos.example/webhook.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "verification.created",
+        "verification.processing",
+        "verification.action_required",
+        "verification.review_required",
+        "verification.completed",
+        "verification.expired",
+        "verification.cancelled",
+        "deletion.updated"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenant_reference": {
+      "type": "string"
+    },
+    "resource_id": {
+      "type": "string"
+    },
+    "resource_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "reason_codes"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "occurred_at",
+    "tenant_reference",
+    "resource_id",
+    "resource_version",
+    "data"
+  ]
+}

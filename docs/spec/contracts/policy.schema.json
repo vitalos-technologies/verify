@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vitalos.example/policy.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "government_id",
+          "face_match",
+          "liveness",
+          "email",
+          "phone"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "quality_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "uncertain_action": {
+      "const": "review_required"
+    },
+    "coverage_version": {
+      "type": "string"
+    },
+    "retention_profile": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "required_checks",
+    "quality_retries",
+    "uncertain_action",
+    "coverage_version",
+    "retention_profile"
+  ]
+}

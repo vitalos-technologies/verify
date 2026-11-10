@@ -1,0 +1,14 @@
+{
+  "id": "workforce_identity",
+  "version": 1,
+  "required_checks": [
+    "government_id",
+    "face_match",
+    "liveness",
+    "email"
+  ],
+  "quality_retries": 2,
+  "uncertain_action": "review_required",
+  "coverage_version": "pilot_1",
+  "retention_profile": "pilot_proposed_30d"
+}

@@ -1,0 +1,258 @@
+{
+  "version": "1.0",
+  "milestones": [
+    {
+      "id": "M00",
+      "title": "Product and commercial definition",
+      "depends_on": [],
+      "planning_window": "Weeks 1\u20132",
+      "owner_role": "Founder/product",
+      "task_ids": [
+        "M00-T01",
+        "M00-T02",
+        "M00-T03",
+        "M00-T04"
+      ],
+      "exit_gate": "Buyer evidence, chosen initial segment, named owners and actual cost cap recorded; no real-data processing.",
+      "status": "planned"
+    },
+    {
+      "id": "M01",
+      "title": "Supplier and processing feasibility",
+      "depends_on": [
+        "M00"
+      ],
+      "planning_window": "Weeks 2\u20134",
+      "owner_role": "Engineering/privacy",
+      "task_ids": [
+        "M01-T01",
+        "M01-T02",
+        "M01-T03",
+        "M01-T04"
+      ],
+      "exit_gate": "Contracted or explicitly selected pilot route with no unresolved disqualifying rights/location issue; privacy assessment plan approved.",
+      "status": "planned"
+    },
+    {
+      "id": "M02",
+      "title": "Secure platform foundation",
+      "depends_on": [
+        "M01"
+      ],
+      "planning_window": "Weeks 3\u20135",
+      "owner_role": "Engineering",
+      "task_ids": [
+        "M02-T01",
+        "M02-T02",
+        "M02-T03",
+        "M02-T04"
+      ],
+      "exit_gate": "AT-01/02 pass; CI, role revocation and environment separation demonstrated.",
+      "status": "planned"
+    },
+    {
+      "id": "M03",
+      "title": "Applicant sessions and contact checks",
+      "depends_on": [
+        "M02"
+      ],
+      "planning_window": "Weeks 5\u20137",
+      "owner_role": "Product/engineering",
+      "task_ids": [
+        "M03-T01",
+        "M03-T02",
+        "M03-T03",
+        "M03-T04"
+      ],
+      "exit_gate": "AT-03/04/15/23 pass; no client-authoritative success or unbounded messaging.",
+      "status": "planned"
+    },
+    {
+      "id": "M04",
+      "title": "Identity evidence and decision pipeline",
+      "depends_on": [
+        "M03"
+      ],
+      "planning_window": "Weeks 7\u20139",
+      "owner_role": "Engineering/assurance",
+      "task_ids": [
+        "M04-T01",
+        "M04-T02",
+        "M04-T03",
+        "M04-T04"
+      ],
+      "exit_gate": "AT-05/06/07/11 pass; result provenance and no approval on technical errors proven.",
+      "status": "planned"
+    },
+    {
+      "id": "M05",
+      "title": "Review, privacy and security readiness",
+      "depends_on": [
+        "M04"
+      ],
+      "planning_window": "Weeks 9\u201311",
+      "owner_role": "Engineering/privacy/security",
+      "task_ids": [
+        "M05-T01",
+        "M05-T02",
+        "M05-T03",
+        "M05-T04"
+      ],
+      "exit_gate": "AT-08/09/10/24 pass; no unresolved critical/high issue; lawful processing and accountable review established.",
+      "status": "planned"
+    },
+    {
+      "id": "M06",
+      "title": "Controlled commercial pilot",
+      "depends_on": [
+        "M05"
+      ],
+      "planning_window": "Weeks 12\u201316",
+      "owner_role": "Founder/product/engineering",
+      "task_ids": [
+        "M06-T01",
+        "M06-T02",
+        "M06-T03",
+        "M06-T04"
+      ],
+      "exit_gate": "AT-12/13 pass; actual pilot evidence supports commercial direction and captures gaps without invented accuracy claims.",
+      "status": "planned"
+    },
+    {
+      "id": "M07",
+      "title": "General availability",
+      "depends_on": [
+        "M06"
+      ],
+      "planning_window": "After pilot gates",
+      "owner_role": "Founder/security/operations",
+      "task_ids": [
+        "M07-T01",
+        "M07-T02",
+        "M07-T03",
+        "M07-T04"
+      ],
+      "exit_gate": "AT-14 plus full regression pass; scope-limited launch signed with actual evidence and support capacity.",
+      "status": "planned"
+    },
+    {
+      "id": "M08",
+      "title": "Supplemental Document AI",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Expansion wave 1",
+      "owner_role": "Product/engineering",
+      "task_ids": [
+        "M08-T01",
+        "M08-T02",
+        "M08-T03",
+        "M08-T04"
+      ],
+      "exit_gate": "AT-16 passes; extraction never masquerades as authenticity; approved module economics and data lifecycle.",
+      "status": "planned"
+    },
+    {
+      "id": "M09",
+      "title": "Authoritative database checks",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Expansion wave 1",
+      "owner_role": "Commercial/engineering/privacy",
+      "task_ids": [
+        "M09-T01",
+        "M09-T02",
+        "M09-T03",
+        "M09-T04"
+      ],
+      "exit_gate": "AT-17 passes; access is contracted and no-match is not automatically fraud.",
+      "status": "planned"
+    },
+    {
+      "id": "M10",
+      "title": "NFC document assurance",
+      "depends_on": [
+        "M08"
+      ],
+      "planning_window": "Expansion wave 2",
+      "owner_role": "Engineering/assurance",
+      "task_ids": [
+        "M10-T01",
+        "M10-T02",
+        "M10-T03",
+        "M10-T04"
+      ],
+      "exit_gate": "AT-18 passes; decoded-only chip data cannot receive authenticated status.",
+      "status": "planned"
+    },
+    {
+      "id": "M11",
+      "title": "Age assurance",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Expansion wave 2",
+      "owner_role": "Product/privacy/assurance",
+      "task_ids": [
+        "M11-T01",
+        "M11-T02",
+        "M11-T03",
+        "M11-T04"
+      ],
+      "exit_gate": "AT-19 passes; specialist review and use-case compliance assessment completed before real minor data.",
+      "status": "planned"
+    },
+    {
+      "id": "M12",
+      "title": "Digital ID and EUDI",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Expansion wave 3",
+      "owner_role": "Engineering/privacy/assurance",
+      "task_ids": [
+        "M12-T01",
+        "M12-T02",
+        "M12-T03",
+        "M12-T04"
+      ],
+      "exit_gate": "AT-20 passes; named scheme onboarding and protocol conformance evidenced.",
+      "status": "planned"
+    },
+    {
+      "id": "M13",
+      "title": "Selective proprietary replacement",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Separate R&D programme",
+      "owner_role": "Research/privacy/assurance",
+      "task_ids": [
+        "M13-T01",
+        "M13-T02",
+        "M13-T03",
+        "M13-T04"
+      ],
+      "exit_gate": "AT-21 passes; gate may conclude continued licensing is preferable; no automatic model replacement.",
+      "status": "planned"
+    },
+    {
+      "id": "M14",
+      "title": "Managed review and market expansion",
+      "depends_on": [
+        "M07"
+      ],
+      "planning_window": "Demand-led expansion",
+      "owner_role": "Operations/commercial/privacy",
+      "task_ids": [
+        "M14-T01",
+        "M14-T02",
+        "M14-T03",
+        "M14-T04"
+      ],
+      "exit_gate": "AT-22 passes; operational staffing and exact regulatory/service scope match commercial claims.",
+      "status": "planned"
+    }
+  ]
+}
