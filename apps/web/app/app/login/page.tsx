@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { con, setCsrf } from "@/lib/console";
 
-// Development sign-in. Replaced by the organisation's identity provider (OIDC + MFA) before pilot.
+// SSO (OIDC + MFA) is the sign-in route; the form below is development-only.
 export default function Login() {
   const router = useRouter();
   const [tenant, setTenant] = useState("");
@@ -22,7 +22,8 @@ export default function Login() {
   return (
     <main>
       <h1>Sign in</h1>
-      <p className="muted">Development only</p>
+      <a className="btn" href="/console/oidc/start">Sign in with SSO</a>
+      <h2>Development</h2>
       {error && <p className="error-summary" role="alert">{error}</p>}
       <form onSubmit={submit}>
         <label htmlFor="tenant">Organisation ID</label>

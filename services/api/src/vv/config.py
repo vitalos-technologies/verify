@@ -29,6 +29,10 @@ class Settings:
     hosted_base_url: str
     coverage_path: Path
     evidence_dir: Path
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = None
+    console_base_url: str = "http://localhost:3000"
     hosted_token_ttl_seconds: int = 72 * 3600
     applicant_session_ttl_seconds: int = 2 * 3600
     console_idle_seconds: int = 30 * 60
@@ -83,4 +87,8 @@ def load_settings() -> Settings:
         hosted_base_url=_env("VV_HOSTED_BASE_URL", "http://localhost:8000") or "",
         coverage_path=Path(_env("VV_COVERAGE_PATH", str(SERVICE_ROOT / "config/coverage/registry.json")) or ""),
         evidence_dir=_evidence_dir(environment),
+        oidc_issuer=_env("VV_OIDC_ISSUER"),
+        oidc_client_id=_env("VV_OIDC_CLIENT_ID"),
+        oidc_client_secret=_env("VV_OIDC_CLIENT_SECRET"),
+        console_base_url=_env("VV_CONSOLE_BASE_URL", "http://localhost:3000") or "",
     )

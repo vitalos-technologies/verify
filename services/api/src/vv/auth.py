@@ -34,10 +34,16 @@ class Principal:
     actor_id: str
     permissions: frozenset[str]
     console_session_id: str | None = None
+    auth_age_seconds: float | None = None
 
     def require(self, permission: str) -> None:
         if permission not in self.permissions:
             raise forbidden()
+
+    def require_recent_auth(self, max_age_seconds: int = 15 * 60) -> None:
+        """Step-up: sensitive console actions need a recent sign-in (11_security §Secrets and authentication)."""
+        if self.actor_type == "console" and (self.auth_age_seconds is None or self.auth_age_seconds > max_age_seconds):
+            raise ApiError(401, "step_up_required", "Sign in again to continue.")
 
 
 def _now() -> datetime:
@@ -91,13 +97,17 @@ def authenticate_api_key(db: Database, pepper: bytes, authorization: str | None)
 
 
 # ------------------------------------------------------------------ console sessions
-def create_console_session(conn, tenant_id: str, membership_id: str, absolute_seconds: int) -> tuple[str, str]:
+def create_console_session(conn, tenant_id: str, membership_id: str, absolute_seconds: int, *,
+                           auth_method: str = "dev", amr: list[str] | None = None,
+                           auth_time: int | None = None) -> tuple[str, str]:
     token = crypto.random_token(32)
     csrf = crypto.random_token(24)
     conn.execute(
-        "INSERT INTO console_sessions (tenant_id, id, membership_id, token_hash, csrf_hash, absolute_expires_at) "
-        "VALUES (%s,%s,%s,%s,%s, now() + make_interval(secs => %s))",
-        (tenant_id, new_id("cses"), membership_id, crypto.token_hash(token), crypto.token_hash(csrf), absolute_seconds))
+        "INSERT INTO console_sessions (tenant_id, id, membership_id, token_hash, csrf_hash, absolute_expires_at, "
+        "auth_method, amr, auth_time) VALUES (%s,%s,%s,%s,%s, now() + make_interval(secs => %s), %s, %s, "
+        "coalesce(to_timestamp(%s), now()))",
+        (tenant_id, new_id("cses"), membership_id, crypto.token_hash(token), crypto.token_hash(csrf), absolute_seconds,
+         auth_method, amr or [], auth_time))
     return token, csrf
 
 
@@ -119,7 +129,7 @@ def authenticate_console(db: Database, token: str | None, csrf: str | None, *, m
         conn.execute("UPDATE console_sessions SET last_seen_at = now() WHERE tenant_id = %s AND id = %s",
                      (row["tenant_id"], row["id"]))
     return Principal(row["tenant_id"], "console", row["membership_id"], ROLE_PERMISSIONS[row["role"]],
-                     console_session_id=row["id"])
+                     console_session_id=row["id"], auth_age_seconds=(now - row["auth_time"]).total_seconds())
 
 
 def revoke_membership(conn, tenant_id: str, membership_id: str, reason: str) -> None:

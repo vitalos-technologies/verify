@@ -13,12 +13,12 @@ from typing import Annotated, Any, Literal
 
 from fastapi import Body, Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.responses import Response as RawResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from vv import applicant as ap
-from vv import auth, billing, deletion, events, evidence, review, service, webhooks
+from vv import auth, billing, deletion, events, evidence, oidc, review, service, webhooks
 from vv.config import Settings, load_settings
 from vv.db import Database
 from vv.domain.coverage import CoverageRegistry
@@ -164,8 +164,13 @@ class AppState:
     store: evidence.LocalSealedStore
 
 
-def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver | None = None,
+               oidc_client: oidc.OidcClient | None = None) -> FastAPI:
     settings = settings or load_settings()
+    if oidc_client is None and settings.oidc_issuer and settings.oidc_client_id:
+        oidc_client = oidc.OidcClient(oidc.OidcConfig(
+            settings.oidc_issuer, settings.oidc_client_id, settings.oidc_client_secret,
+            settings.console_base_url.rstrip("/") + "/console/oidc/callback"))
     db = Database(settings.app_dsn)
     providers: dict[str, ProviderAdapter] = {}
     if settings.is_non_production:
@@ -392,9 +397,49 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
         return ap.mark_submitted(db, ctx, attempt_id)
 
     # -------------------------------------------------------------- console (cookie session + CSRF)
+    def set_console_cookies(response: Response, token: str, csrf_token: str) -> None:
+        set_cookie(response, CONSOLE_COOKIE, token, "/console", settings.console_absolute_seconds)
+        # Double-submit CSRF token readable by the console script (not a credential on its own).
+        response.set_cookie("vv_csrf", csrf_token, max_age=settings.console_absolute_seconds, path="/",
+                            httponly=False, samesite="strict",
+                            secure=not settings.is_non_production or settings.hosted_base_url.startswith("https"))
+
+    @app.get("/console/oidc/start")
+    def oidc_start(tenant: str | None = None):
+        if oidc_client is None:
+            raise ApiError(404, "not_found", "Resource not found.")
+        with db.system_tx() as conn:
+            url = oidc.start(conn, oidc_client, settings.data_key, tenant)
+        return RedirectResponse(url, status_code=302)
+
+    @app.get("/console/oidc/callback")
+    def oidc_callback(code: str = "", state: str = ""):
+        if oidc_client is None:
+            raise ApiError(404, "not_found", "Resource not found.")
+        result = oidc.finish(db, oidc_client, settings.data_key, code, state)
+        with db.system_tx() as conn:
+            members = list(conn.execute("SELECT * FROM vv_memberships_for_subject(%s)", (result["subject"],)))
+        if result["tenant_hint"]:
+            members = [m for m in members if m["tenant_id"] == result["tenant_hint"]]
+        if len(members) != 1:
+            # No silent binding by email; one subject in several organisations must pick one.
+            raise ApiError(403, "no_membership" if not members else "choose_organisation",
+                           "No access to this organisation." if not members else "Choose an organisation to sign in.")
+        m = members[0]
+        with db.tenant_tx(m["tenant_id"]) as conn:
+            token, csrf_token = auth.create_console_session(
+                conn, m["tenant_id"], m["id"], settings.console_absolute_seconds, auth_method="oidc",
+                amr=result["amr"], auth_time=result["auth_time"])
+            service.audit(conn, m["tenant_id"], "console", m["id"], "console.sign_in", "membership", m["id"],
+                          reason="oidc+mfa")
+        response = RedirectResponse(settings.console_base_url.rstrip("/") + "/app", status_code=302)
+        set_console_cookies(response, token, csrf_token)
+        return response
+
     @app.post("/console/api-keys")
     def console_create_key(request: Request, principal: Console, body: ApiKeyCreate):
         principal.require("api_keys:manage")
+        principal.require_recent_auth()
         with db.tenant_tx(principal.tenant_id) as conn:
             key_id, raw = auth.create_api_key(conn, settings.hmac_pepper, settings.environment, principal.tenant_id,
                                               body.scopes, body.label, principal.actor_id)
@@ -418,6 +463,7 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
     @app.post("/console/memberships/{membership_id}/revoke")
     def console_revoke_membership(request: Request, membership_id: str, principal: Console, body: RevokeRequest):
         principal.require("memberships:manage")
+        principal.require_recent_auth()
         with db.tenant_tx(principal.tenant_id) as conn:
             auth.revoke_membership(conn, principal.tenant_id, membership_id, body.reason)
             service.audit(conn, principal.tenant_id, "console", principal.actor_id, "membership.revoke",
@@ -546,6 +592,7 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
 
     @app.post("/console/evidence/{evidence_id}/reveal")
     def console_reveal(request: Request, evidence_id: str, principal: Console, body: RevealRequest):
+        principal.require_recent_auth()
         with db.tenant_tx(principal.tenant_id) as conn:
             role = conn.execute("SELECT role FROM memberships WHERE tenant_id = %s AND id = %s",
                                 (principal.tenant_id, principal.actor_id)).fetchone()["role"]
@@ -631,7 +678,7 @@ def create_app(settings: Settings | None = None, *, resolver: webhooks.Resolver 
                     raise ApiError(401, "unauthenticated", "Valid credentials are required.")
                 token, csrf = auth.create_console_session(conn, body.tenant_id, m["id"],
                                                           settings.console_absolute_seconds)
-            set_cookie(response, CONSOLE_COOKIE, token, "/console", settings.console_absolute_seconds)
+            set_console_cookies(response, token, csrf)
             return {"csrf_token": csrf}
 
         if os.environ.get("VV_DEV_EXPOSE_CODES") == "1":

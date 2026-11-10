@@ -4,7 +4,11 @@ import { ApiFailure } from "@/lib/api";
 const KEY = "vv_csrf";
 
 export function setCsrf(token: string) { try { sessionStorage.setItem(KEY, token); } catch { /* storage blocked */ } }
-function csrf(): string { try { return sessionStorage.getItem(KEY) ?? ""; } catch { return ""; } }
+function csrf(): string {
+  try { const v = sessionStorage.getItem(KEY); if (v) return v; } catch { /* storage blocked */ }
+  const m = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )vv_csrf=([^;]+)/) : null;
+  return m ? decodeURIComponent(m[1]) : "";
+}
 
 export async function con<T>(path: string, body?: unknown, method?: string): Promise<T> {
   const m = method ?? (body === undefined ? "GET" : "POST");

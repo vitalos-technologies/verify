@@ -4,7 +4,7 @@
   "milestone_gates": {
     "M00": "not_met: needs founder evidence (interviews, segment, owners, cost cap)",
     "M01": "not_met: no supplier selected or contracted; privacy assessment plan not approved",
-    "M02": "not_met: AT-01/AT-02 pass in CI-equivalent run, but OIDC/MFA (M02-T02) and environment baseline (M02-T04) are open",
+    "M02": "not_met: AT-01/AT-02 pass incl. OIDC+MFA against a fake IdP; environment baseline (M02-T04) and branch protection need owner/cloud access",
     "M03": "not_met: AT-03/AT-15/AT-23 pass; AT-04 automated portion passes, manual device/screen-reader testing outstanding",
     "M04": "not_met: AT-05/06/07/11 pass against the DUMMY provider only; no real supplier adapter",
     "M05": "not_met: AT-09 passes (simulated); AT-08 partial; AT-10/AT-24 open; DPIA, security assessment and processing approval are external"
@@ -57,17 +57,21 @@
       "gap": "Branch protection / required reviews must be enabled by a repo admin."
     },
     "M02-T02": {
-      "status": "in_progress",
+      "status": "implemented",
       "evidence": [
-        "tests/test_at02_revocation.py"
+        "services/api/src/vv/oidc.py",
+        "services/api/migrations/0008_oidc.sql",
+        "services/api/tests/test_oidc.py",
+        "services/api/tests/test_at02_revocation.py"
       ],
       "done": [
-        "membership roles",
-        "scoped hashed API keys",
-        "revocation",
-        "console sessions with idle/absolute timeout and CSRF"
+        "OIDC code flow + PKCE S256, one-use state, nonce",
+        "ID token verified via JWKS (sig, iss, aud, exp, kid rotation)",
+        "MFA required for all console roles (amr, RFC 8176)",
+        "step-up (15 min) for API keys, membership revocation, evidence reveal",
+        "membership roles, scoped hashed API keys, revocation, CSRF double-submit"
       ],
-      "gap": "OIDC provider not selected (dev-login stand-in, non-production only); MFA/step-up not implemented."
+      "gap": "Tested against a fake IdP only; no real IdP tenant configured (Cognito proposed, M01 decision). Invitation/binding of pending members by verified email not built (members added by subject via CLI)."
     },
     "M02-T03": {
       "status": "implemented",
